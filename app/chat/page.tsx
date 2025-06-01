@@ -278,3 +278,4 @@ export default function ChatPage() {
     </div>
   )
 }
+// Force deployment - Updated backend URL
