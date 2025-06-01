@@ -4,23 +4,41 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
-export default function ModernChatPage() {
+// Conditional Supabase import
+let supabase = null
+
+const initSupabase = async () => {
+  try {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.warn('⚠️ Supabase credentials not configured')
+      return null
+    }
+
+    const { createClient } = await import('@supabase/supabase-js')
+    return createClient(supabaseUrl, supabaseAnonKey)
+  } catch (error) {
+    console.error('❌ Error initializing Supabase:', error)
+    return null
+  }
+}
+
+export default function RealChatRAG() {
   const [currentTime, setCurrentTime] = useState('')
   const [messages, setMessages] = useState([
-    { 
-      type: 'system', 
-      content: '¡Hola! Soy tu asistente RAG inteligente. Puedo ayudarte a analizar documentos, buscar información específica y responder preguntas basándome en tu base de conocimiento. ¿En qué te puedo ayudar hoy?',
-      timestamp: new Date()
+    {
+      id: 1,
+      type: 'assistant',
+      content: '¡Hola! Soy tu asistente RAG conectado a tu base de datos real. Puedo responder preguntas sobre tus documentos. ¿En qué puedo ayudarte?',
+      timestamp: new Date().toLocaleTimeString()
     }
   ])
   const [inputMessage, setInputMessage] = useState('')
-  const [isTyping, setIsTyping] = useState(false)
-  const [chatSessions, setChatSessions] = useState([
-    { id: 1, name: 'Análisis Financiero Q4', date: '2024-12-15', messages: 15 },
-    { id: 2, name: 'Consulta sobre Ventas', date: '2024-12-14', messages: 8 },
-    { id: 3, name: 'Revisión de Políticas', date: '2024-12-13', messages: 22 }
-  ])
-  const [activeSession, setActiveSession] = useState(1)
+  const [isLoading, setIsLoading] = useState(false)
+  const [supabaseClient, setSupabaseClient] = useState(null)
+  const [connectionStatus, setConnectionStatus] = useState('connecting')
   const messagesEndRef = useRef(null)
   const router = useRouter()
 
@@ -43,478 +61,478 @@ export default function ModernChatPage() {
   }, [])
 
   useEffect(() => {
+    initializeSupabase()
+  }, [])
+
+  useEffect(() => {
     scrollToBottom()
   }, [messages])
+
+  const initializeSupabase = async () => {
+    try {
+      setConnectionStatus('connecting')
+      const client = await initSupabase()
+      setSupabaseClient(client)
+      
+      if (client) {
+        setConnectionStatus('connected')
+        console.log('✅ Chat conectado a Supabase')
+      } else {
+        setConnectionStatus('mock')
+        console.log('⚠️ Chat usando modo demostración')
+      }
+    } catch (error) {
+      console.error('❌ Error conectando chat a Supabase:', error)
+      setConnectionStatus('error')
+    }
+  }
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }
+
+  const searchInDocuments = async (query) => {
+    if (!supabaseClient) {
+      return null
+    }
+
+    try {
+      console.log('🔍 Buscando en documentos:', query)
+      
+      // Buscar en el contenido de los documentos
+      const { data, error } = await supabaseClient
+        .from('documents')
+        .select('name, content')
+        .ilike('content', `%${query}%`)
+        .limit(5)
+
+      if (error) {
+        console.error('❌ Error buscando:', error)
+        return null
+      }
+
+      console.log('📊 Documentos encontrados:', data?.length || 0)
+      return data
+    } catch (error) {
+      console.error('❌ Error en búsqueda:', error)
+      return null
+    }
+  }
+
+  const generateRAGResponse = async (query, documents) => {
+    if (!documents || documents.length === 0) {
+      return `No encontré información específica sobre "${query}" en tus documentos. Los documentos disponibles incluyen manuales, análisis, FAQ y políticas empresariales. ¿Podrías ser más específico sobre qué información necesitas?`
+    }
+
+    // Crear contexto con el contenido de los documentos
+    const context = documents.map(doc => {
+      const preview = doc.content ? doc.content.substring(0, 500) : 'Sin contenido'
+      return `**${doc.name}**: ${preview}...`
+    }).join('\n\n')
+
+    // Buscar específicamente artículos del CFF
+    if (query.toLowerCase().includes('articulo') && query.toLowerCase().includes('cff')) {
+      const cffDoc = documents.find(doc => 
+        doc.name.toLowerCase().includes('cff') || 
+        doc.content?.toLowerCase().includes('codigo fiscal')
+      )
+      
+      if (cffDoc) {
+        const content = cffDoc.content || ''
+        const articleMatch = query.match(/articulo\s*(\d+)/i)
+        
+        if (articleMatch) {
+          const articleNum = articleMatch[1]
+          // Buscar el artículo específico en el contenido
+          const articleRegex = new RegExp(`art[íi]culo\\s*${articleNum}[^\\d].*?(?=art[íi]culo\\s*\\d|$)`, 'is')
+          const articleContent = content.match(articleRegex)
+          
+          if (articleContent) {
+            return `**Artículo ${articleNum} del Código Fiscal de la Federación:**\n\n${articleContent[0].substring(0, 1000)}...\n\n*Fuente: ${cffDoc.name}*`
+          }
+        }
+      }
+    }
+
+    // Respuesta general basada en contexto
+    return `Basándome en tus documentos, encontré la siguiente información relevante:\n\n${context}\n\n¿Te gustaría que busque algo más específico en estos documentos?`
+  }
+
+  const handleSendMessage = async () => {
+    if (!inputMessage.trim() || isLoading) return
+
+    const userMessage = {
+      id: Date.now(),
+      type: 'user',
+      content: inputMessage,
+      timestamp: new Date().toLocaleTimeString()
+    }
+
+    setMessages(prev => [...prev, userMessage])
+    setInputMessage('')
+    setIsLoading(true)
+
+    try {
+      // Buscar en documentos reales
+      const documents = await searchInDocuments(inputMessage)
+      
+      // Generar respuesta RAG
+      const response = await generateRAGResponse(inputMessage, documents)
+
+      const assistantMessage = {
+        id: Date.now() + 1,
+        type: 'assistant',
+        content: response,
+        timestamp: new Date().toLocaleTimeString()
+      }
+
+      setMessages(prev => [...prev, assistantMessage])
+    } catch (error) {
+      console.error('❌ Error generando respuesta:', error)
+      
+      const errorMessage = {
+        id: Date.now() + 1,
+        type: 'assistant',
+        content: 'Disculpa, hubo un error al procesar tu pregunta. ¿Podrías intentarlo de nuevo?',
+        timestamp: new Date().toLocaleTimeString()
+      }
+
+      setMessages(prev => [...prev, errorMessage])
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      handleSendMessage()
+    }
+  }
+
+  const handleSuggestedQuestion = (question) => {
+    setInputMessage(question)
+    handleSendMessage()
+  }
+
+  const suggestedQuestions = [
+    "¿Qué dice el artículo 32 del CFF?",
+    "Explícame el contenido del Manual de Usuario",
+    "¿Qué información hay en el FAQ del Sistema?",
+    "Resumen de las políticas de la empresa"
+  ]
 
   const handleLogout = () => {
     localStorage.removeItem('userEmail')
     router.push('/login')
   }
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }
-
-  const handleSendMessage = async () => {
-    if (!inputMessage.trim()) return
-    
-    const userMessage = { 
-      type: 'user', 
-      content: inputMessage,
-      timestamp: new Date()
+  const getConnectionBadge = () => {
+    const styles = {
+      connecting: { bg: 'rgba(251, 191, 36, 0.2)', color: '#fbbf24', text: '🔄 Conectando...' },
+      connected: { bg: 'rgba(16, 185, 129, 0.2)', color: '#10b981', text: '🔗 RAG Conectado' },
+      mock: { bg: 'rgba(59, 130, 246, 0.2)', color: '#3b82f6', text: '📋 Demo' },
+      error: { bg: 'rgba(239, 68, 68, 0.2)', color: '#ef4444', text: '❌ Error' }
     }
     
-    setMessages(prev => [...prev, userMessage])
-    setInputMessage('')
-    setIsTyping(true)
-    
-    // Simular respuesta RAG más realista
-    setTimeout(() => {
-      const responses = [
-        {
-          content: `Basándome en el análisis de los documentos financieros, puedo informarte que los ingresos del Q4 2024 muestran un crecimiento del 23% comparado con el mismo período del año anterior. 
-
-Los principales factores que contribuyeron a este crecimiento fueron:
-• Expansión en mercados internacionales (+15%)
-• Nuevos productos digitales (+8%)
-• Optimización de costos operativos
-
-¿Te gustaría que profundice en algún aspecto específico?`,
-          timestamp: new Date()
-        },
-        {
-          content: `He encontrado información relevante en la base de datos de conocimiento sobre las métricas de ventas:
-
-**Resumen de Ventas Q4 2024:**
-- Ventas totales: $2.4M (+18% vs Q3)
-- Nuevos clientes: 347 (+25%)
-- Tasa de conversión: 12.3% (+2.1%)
-- Ticket promedio: $6,920 (+5%)
-
-Los sectores con mejor rendimiento fueron tecnología y servicios financieros. ¿Necesitas detalles sobre algún sector específico?`,
-          timestamp: new Date()
-        },
-        {
-          content: `Según el análisis de los documentos procesados, las tendencias principales para 2025 incluyen:
-
-🔹 **Digitalización Acelerada**: 78% de las empresas planean incrementar inversión en tecnología
-🔹 **Sostenibilidad**: Enfoque en ESG y prácticas ambientales responsables  
-🔹 **IA y Automatización**: Adopción masiva de herramientas inteligentes
-🔹 **Trabajo Híbrido**: Consolidación de modelos flexibles
-
-Esta información se basa en el análisis de 15 reportes industriales y estudios de mercado en nuestra base de datos.`,
-          timestamp: new Date()
-        }
-      ]
-      
-      const randomResponse = responses[Math.floor(Math.random() * responses.length)]
-      const systemMessage = { type: 'system', ...randomResponse }
-      
-      setMessages(prev => [...prev, systemMessage])
-      setIsTyping(false)
-    }, 2000)
-  }
-
-  const suggestedQuestions = [
-    "¿Cuáles fueron los resultados financieros del último trimestre?",
-    "Analiza las tendencias de ventas por región",
-    "¿Qué insights puedes extraer sobre retención de clientes?",
-    "Busca información sobre la competencia en el mercado",
-    "¿Cuáles son las proyecciones para el próximo año?",
-    "Analiza el rendimiento de los nuevos productos"
-  ]
-
-  const createNewSession = () => {
-    const newSession = {
-      id: Date.now(),
-      name: `Nueva Conversación ${chatSessions.length + 1}`,
-      date: new Date().toISOString().split('T')[0],
-      messages: 0
-    }
-    setChatSessions(prev => [newSession, ...prev])
-    setActiveSession(newSession.id)
-    setMessages([{
-      type: 'system',
-      content: '¡Nueva conversación iniciada! ¿En qué puedo ayudarte?',
-      timestamp: new Date()
-    }])
+    const style = styles[connectionStatus]
+    return (
+      <div style={{
+        background: style.bg,
+        color: style.color,
+        padding: '6px 12px',
+        borderRadius: '20px',
+        fontSize: '12px',
+        fontWeight: '600'
+      }}>
+        {style.text}
+      </div>
+    )
   }
 
   return (
-    <>
-      <style jsx global>{`
-        * {
-          margin: 0;
-          padding: 0;
-          box-sizing: border-box;
-        }
-        
-        body {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-          background: linear-gradient(135deg, #0f172a 0%, #581c87 50%, #0f172a 100%);
-          min-height: 100vh;
-          color: white;
-        }
-        
-        .glass-card {
-          background: rgba(255, 255, 255, 0.1);
-          backdrop-filter: blur(20px);
-          border: 1px solid rgba(255, 255, 255, 0.2);
-          border-radius: 20px;
-          box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-        }
-        
-        .header-glass {
-          background: rgba(255, 255, 255, 0.1);
-          backdrop-filter: blur(20px);
-          border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-        }
-        
-        .user-message {
-          background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%);
-          color: white;
-          padding: 16px 20px;
-          border-radius: 20px 20px 4px 20px;
-          margin-left: auto;
-          max-width: 70%;
-          margin-bottom: 16px;
-          box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
-          word-wrap: break-word;
-        }
-        
-        .system-message {
-          background: rgba(255, 255, 255, 0.15);
-          backdrop-filter: blur(10px);
-          color: white;
-          padding: 16px 20px;
-          border-radius: 20px 20px 20px 4px;
-          max-width: 80%;
-          margin-bottom: 16px;
-          border: 1px solid rgba(255, 255, 255, 0.2);
-          word-wrap: break-word;
-          line-height: 1.6;
-        }
-        
-        .chat-input {
-          background: rgba(255, 255, 255, 0.1);
-          border: 1px solid rgba(255, 255, 255, 0.3);
-          border-radius: 16px;
-          padding: 16px 20px;
-          color: white;
-          width: 100%;
-          font-size: 16px;
-          resize: none;
-          min-height: 60px;
-          max-height: 120px;
-        }
-        
-        .chat-input::placeholder {
-          color: rgba(255, 255, 255, 0.6);
-        }
-        
-        .chat-input:focus {
-          outline: none;
-          border-color: #8b5cf6;
-          box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2);
-        }
-        
-        .btn-primary {
-          background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%);
-          border: none;
-          color: white;
-          padding: 12px 24px;
-          border-radius: 12px;
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 0.3s ease;
-          transform: translateY(0);
-        }
-        
-        .btn-primary:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 10px 25px rgba(139, 92, 246, 0.4);
-        }
-        
-        .btn-secondary {
-          background: rgba(255, 255, 255, 0.1);
-          border: 1px solid rgba(255, 255, 255, 0.3);
-          color: white;
-          padding: 8px 16px;
-          border-radius: 8px;
-          cursor: pointer;
-          transition: all 0.3s ease;
-        }
-        
-        .btn-secondary:hover {
-          background: rgba(255, 255, 255, 0.2);
-        }
-        
-        .session-item {
-          background: rgba(255, 255, 255, 0.05);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          border-radius: 12px;
-          padding: 16px;
-          margin-bottom: 12px;
-          cursor: pointer;
-          transition: all 0.3s ease;
-        }
-        
-        .session-item:hover {
-          background: rgba(255, 255, 255, 0.1);
-          border-color: rgba(139, 92, 246, 0.3);
-        }
-        
-        .session-item.active {
-          background: rgba(139, 92, 246, 0.2);
-          border-color: rgba(139, 92, 246, 0.4);
-        }
-        
-        .suggested-question {
-          background: rgba(255, 255, 255, 0.1);
-          border: 1px solid rgba(255, 255, 255, 0.2);
-          border-radius: 12px;
-          padding: 12px 16px;
-          margin-bottom: 8px;
-          cursor: pointer;
-          transition: all 0.3s ease;
-          font-size: 14px;
-          text-align: left;
-          width: 100%;
-          color: white;
-        }
-        
-        .suggested-question:hover {
-          background: rgba(255, 255, 255, 0.15);
-          border-color: rgba(139, 92, 246, 0.4);
-          transform: translateX(4px);
-        }
-        
-        .nav-link {
-          color: rgba(255, 255, 255, 0.8);
-          text-decoration: none;
-          padding: 8px 16px;
-          border-radius: 8px;
-          transition: all 0.3s ease;
-          margin-right: 12px;
-        }
-        
-        .nav-link:hover {
-          background: rgba(255, 255, 255, 0.1);
-          color: white;
-        }
-        
-        .nav-link.active {
-          background: rgba(139, 92, 246, 0.3);
-          color: white;
-        }
-        
-        .typing-indicator {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          padding: 16px 20px;
-          background: rgba(255, 255, 255, 0.1);
-          border-radius: 20px;
-          max-width: 120px;
-          margin-bottom: 16px;
-        }
-        
-        .typing-dot {
-          width: 8px;
-          height: 8px;
-          border-radius: 50%;
-          background: rgba(255, 255, 255, 0.6);
-          animation: typing 1.4s infinite ease-in-out;
-        }
-        
-        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
-        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
-        
-        @keyframes typing {
-          0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
-          40% { opacity: 1; transform: scale(1); }
-        }
-        
-        .container {
-          max-width: 1200px;
-          margin: 0 auto;
-          padding: 0 20px;
-        }
-        
-        @media (max-width: 768px) {
-          .chat-layout {
-            grid-template-columns: 1fr !important;
-          }
-          
-          .sidebar {
-            display: none;
-          }
-        }
-      `}</style>
-
-      <div style={{ background: 'linear-gradient(135deg, #0f172a 0%, #581c87 50%, #0f172a 100%)', minHeight: '100vh' }}>
-        {/* Header */}
-        <header className="header-glass">
-          <div className="container">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: '70px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                <div style={{ 
-                  width: '40px', 
-                  height: '40px', 
-                  background: 'linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)',
-                  borderRadius: '12px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '18px',
-                  fontWeight: 'bold'
-                }}>
-                  AI
-                </div>
-                <h1 style={{ fontSize: '24px', fontWeight: 'bold' }}>Sistema RAG Avanzado</h1>
+    <div style={{ 
+      background: 'linear-gradient(135deg, #0f172a 0%, #581c87 50%, #0f172a 100%)', 
+      minHeight: '100vh',
+      color: 'white',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif'
+    }}>
+      {/* Header */}
+      <header style={{ 
+        background: 'rgba(255, 255, 255, 0.1)', 
+        backdropFilter: 'blur(20px)', 
+        borderBottom: '1px solid rgba(255, 255, 255, 0.2)',
+        padding: '20px 0'
+      }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <div style={{ 
+                width: '40px', 
+                height: '40px', 
+                background: 'linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)',
+                borderRadius: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '18px',
+                fontWeight: 'bold'
+              }}>
+                AI
               </div>
-              
-              <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-                <span style={{ fontSize: '14px', opacity: '0.8' }}>{currentTime}</span>
-                <button onClick={handleLogout} className="btn-secondary">
-                  Cerrar Sesión
-                </button>
-              </div>
+              <h1 style={{ fontSize: '24px', fontWeight: 'bold' }}>Sistema RAG Avanzado</h1>
             </div>
-          </div>
-        </header>
-
-        {/* Navigation */}
-        <div className="container">
-          <div style={{ padding: '20px 0', borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>
-            <Link href="/dashboard" className="nav-link">Dashboard</Link>
-            <Link href="/chat" className="nav-link active">Chat</Link>
-            <Link href="/analytics" className="nav-link">Analytics</Link>
-            <Link href="/upload" className="nav-link">Upload</Link>
-            <Link href="/documents" className="nav-link">Documents</Link>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+              <span style={{ fontSize: '14px', opacity: '0.8' }}>{currentTime}</span>
+              <button
+                onClick={handleLogout}
+                style={{
+                  background: 'rgba(239, 68, 68, 0.2)',
+                  border: '1px solid rgba(239, 68, 68, 0.3)',
+                  color: 'white',
+                  padding: '8px 16px',
+                  borderRadius: '8px',
+                  cursor: 'pointer'
+                }}
+              >
+                Cerrar Sesión
+              </button>
+            </div>
           </div>
         </div>
+      </header>
 
-        <div className="container" style={{ padding: '30px 20px' }}>
-          <div className="chat-layout" style={{ display: 'grid', gridTemplateColumns: '300px 1fr 300px', gap: '30px', height: 'calc(100vh - 200px)' }}>
+      {/* Navigation */}
+      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 20px' }}>
+        <div style={{ padding: '20px 0', borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>
+          <Link href="/dashboard" style={{ color: 'rgba(255, 255, 255, 0.8)', textDecoration: 'none', padding: '8px 16px', borderRadius: '8px', marginRight: '12px' }}>Dashboard</Link>
+          <Link href="/chat" style={{ background: 'rgba(139, 92, 246, 0.3)', color: 'white', textDecoration: 'none', padding: '8px 16px', borderRadius: '8px', marginRight: '12px' }}>Chat</Link>
+          <Link href="/analytics" style={{ color: 'rgba(255, 255, 255, 0.8)', textDecoration: 'none', padding: '8px 16px', borderRadius: '8px', marginRight: '12px' }}>Analytics</Link>
+          <Link href="/upload" style={{ color: 'rgba(255, 255, 255, 0.8)', textDecoration: 'none', padding: '8px 16px', borderRadius: '8px', marginRight: '12px' }}>Upload</Link>
+          <Link href="/documents" style={{ color: 'rgba(255, 255, 255, 0.8)', textDecoration: 'none', padding: '8px 16px', borderRadius: '8px', marginRight: '12px' }}>Documents</Link>
+        </div>
+      </div>
+
+      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '40px 20px' }}>
+        
+        {/* Header Section */}
+        <div style={{ marginBottom: '40px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{ fontSize: '32px' }}>💬</div>
+              <h1 style={{ fontSize: '36px', fontWeight: 'bold' }}>Chat RAG Inteligente</h1>
+              {getConnectionBadge()}
+            </div>
+          </div>
+          <p style={{ fontSize: '18px', opacity: '0.8' }}>
+            {connectionStatus === 'connected' 
+              ? '🔗 Conectado a tu base de datos - Consulta tus documentos reales'
+              : connectionStatus === 'mock' 
+                ? '📋 Modo demostración - Configura Supabase para acceso real'
+                : '🔄 Conectando a base de datos'
+            }
+          </p>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '40px' }}>
+          
+          {/* Chat Area */}
+          <div style={{ 
+            background: 'rgba(255, 255, 255, 0.1)', 
+            backdropFilter: 'blur(20px)', 
+            border: '1px solid rgba(255, 255, 255, 0.2)', 
+            borderRadius: '20px', 
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+            padding: '30px',
+            height: '600px',
+            display: 'flex',
+            flexDirection: 'column'
+          }}>
+            <h2 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '20px' }}>
+              Conversación RAG
+            </h2>
             
-            {/* Sidebar - Sessions */}
-            <div className="sidebar">
-              <div className="glass-card" style={{ padding: '24px', height: '100%', display: 'flex', flexDirection: 'column' }}>
-                <div style={{ marginBottom: '20px' }}>
-                  <button onClick={createNewSession} className="btn-primary" style={{ width: '100%' }}>
-                    ➕ Nueva Conversación
-                  </button>
-                </div>
-                
-                <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px' }}>Conversaciones</h3>
-                
-                <div style={{ flex: 1, overflowY: 'auto' }}>
-                  {chatSessions.map((session) => (
-                    <div
-                      key={session.id}
-                      className={`session-item ${activeSession === session.id ? 'active' : ''}`}
-                      onClick={() => setActiveSession(session.id)}
-                    >
-                      <div style={{ fontWeight: '600', marginBottom: '4px', fontSize: '14px' }}>{session.name}</div>
-                      <div style={{ fontSize: '12px', opacity: '0.7' }}>
-                        {session.messages} mensajes • {new Date(session.date).toLocaleDateString('es-ES')}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Chat Main */}
-            <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-              <div style={{ padding: '30px 30px 20px', borderBottom: '1px solid rgba(255, 255, 255, 0.2)' }}>
-                <h2 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '8px' }}>💬 Chat Inteligente RAG</h2>
-                <p style={{ opacity: '0.8' }}>Haz preguntas sobre tus documentos y obtén respuestas basadas en IA</p>
-              </div>
-              
-              {/* Messages */}
-              <div style={{ flex: 1, padding: '20px 30px', overflowY: 'auto' }}>
-                {messages.map((message, index) => (
-                  <div key={index}>
-                    <div className={message.type === 'user' ? 'user-message' : 'system-message'}>
+            {/* Messages */}
+            <div style={{ 
+              flex: 1, 
+              overflowY: 'auto', 
+              marginBottom: '20px',
+              padding: '10px'
+            }}>
+              {messages.map((message) => (
+                <div key={message.id} style={{
+                  display: 'flex',
+                  justifyContent: message.type === 'user' ? 'flex-end' : 'flex-start',
+                  marginBottom: '16px'
+                }}>
+                  <div style={{
+                    background: message.type === 'user' 
+                      ? 'linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)'
+                      : 'rgba(255, 255, 255, 0.1)',
+                    padding: '12px 16px',
+                    borderRadius: '16px',
+                    maxWidth: '80%',
+                    border: message.type === 'assistant' ? '1px solid rgba(255, 255, 255, 0.2)' : 'none'
+                  }}>
+                    <div style={{ fontSize: '14px', marginBottom: '4px' }}>
                       {message.content}
-                      <div style={{ fontSize: '11px', opacity: '0.7', marginTop: '8px' }}>
-                        {message.timestamp.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
-                      </div>
+                    </div>
+                    <div style={{ fontSize: '10px', opacity: '0.6' }}>
+                      {message.timestamp}
                     </div>
                   </div>
-                ))}
-                
-                {isTyping && (
-                  <div className="typing-indicator">
-                    <div className="typing-dot"></div>
-                    <div className="typing-dot"></div>
-                    <div className="typing-dot"></div>
-                  </div>
-                )}
-                
-                <div ref={messagesEndRef} />
-              </div>
-              
-              {/* Input */}
-              <div style={{ padding: '20px 30px', borderTop: '1px solid rgba(255, 255, 255, 0.2)' }}>
-                <div style={{ display: 'flex', gap: '12px', alignItems: 'end' }}>
-                  <textarea
-                    value={inputMessage}
-                    onChange={(e) => setInputMessage(e.target.value)}
-                    onKeyPress={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault()
-                        handleSendMessage()
-                      }
-                    }}
-                    placeholder="Escribe tu pregunta aquí... (Shift + Enter para nueva línea)"
-                    className="chat-input"
-                  />
-                  <button 
-                    onClick={handleSendMessage} 
-                    className="btn-primary"
-                    disabled={!inputMessage.trim() || isTyping}
-                    style={{ 
-                      opacity: (!inputMessage.trim() || isTyping) ? 0.5 : 1,
-                      cursor: (!inputMessage.trim() || isTyping) ? 'not-allowed' : 'pointer'
-                    }}
-                  >
-                    Enviar
-                  </button>
                 </div>
-              </div>
+              ))}
+              
+              {isLoading && (
+                <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: '16px' }}>
+                  <div style={{
+                    background: 'rgba(255, 255, 255, 0.1)',
+                    padding: '12px 16px',
+                    borderRadius: '16px',
+                    border: '1px solid rgba(255, 255, 255, 0.2)'
+                  }}>
+                    <div style={{ fontSize: '14px' }}>🤔 Buscando en tus documentos...</div>
+                  </div>
+                </div>
+              )}
+              
+              <div ref={messagesEndRef} />
+            </div>
+            
+            {/* Input */}
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <input
+                type="text"
+                value={inputMessage}
+                onChange={(e) => setInputMessage(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder="Pregunta sobre tus documentos..."
+                disabled={isLoading}
+                style={{
+                  flex: 1,
+                  background: 'rgba(255, 255, 255, 0.1)',
+                  border: '1px solid rgba(255, 255, 255, 0.3)',
+                  borderRadius: '12px',
+                  padding: '12px 16px',
+                  color: 'white',
+                  fontSize: '16px'
+                }}
+              />
+              <button
+                onClick={handleSendMessage}
+                disabled={isLoading || !inputMessage.trim()}
+                style={{
+                  background: isLoading || !inputMessage.trim() 
+                    ? 'rgba(139, 92, 246, 0.5)' 
+                    : 'linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)',
+                  border: 'none',
+                  color: 'white',
+                  padding: '12px 20px',
+                  borderRadius: '12px',
+                  cursor: isLoading || !inputMessage.trim() ? 'not-allowed' : 'pointer',
+                  fontWeight: '600'
+                }}
+              >
+                {isLoading ? '⏳' : '🚀'}
+              </button>
+            </div>
+          </div>
+
+          {/* Sidebar */}
+          <div>
+            {/* Suggested Questions */}
+            <div style={{ 
+              background: 'rgba(255, 255, 255, 0.1)', 
+              backdropFilter: 'blur(20px)', 
+              border: '1px solid rgba(255, 255, 255, 0.2)', 
+              borderRadius: '20px', 
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+              padding: '24px', 
+              marginBottom: '24px' 
+            }}>
+              <h3 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '20px' }}>
+                Preguntas Sugeridas
+              </h3>
+              
+              {suggestedQuestions.map((question, index) => (
+                <button
+                  key={index}
+                  onClick={() => handleSuggestedQuestion(question)}
+                  disabled={isLoading}
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.1)',
+                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                    borderRadius: '12px',
+                    padding: '12px',
+                    color: 'white',
+                    width: '100%',
+                    marginBottom: '12px',
+                    cursor: isLoading ? 'not-allowed' : 'pointer',
+                    textAlign: 'left',
+                    fontSize: '14px',
+                    transition: 'all 0.3s ease',
+                    opacity: isLoading ? 0.5 : 1
+                  }}
+                  onMouseOver={(e) => {
+                    if (!isLoading) {
+                      e.target.style.background = 'rgba(255, 255, 255, 0.2)'
+                    }
+                  }}
+                  onMouseOut={(e) => {
+                    e.target.style.background = 'rgba(255, 255, 255, 0.1)'
+                  }}
+                >
+                  💡 {question}
+                </button>
+              ))}
             </div>
 
-            {/* Sidebar - Suggestions */}
-            <div className="sidebar">
-              <div className="glass-card" style={{ padding: '24px', height: '100%' }}>
-                <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '20px' }}>💡 Preguntas Sugeridas</h3>
-                
-                <div>
-                  {suggestedQuestions.map((question, index) => (
-                    <button
-                      key={index}
-                      onClick={() => setInputMessage(question)}
-                      className="suggested-question"
-                    >
-                      {question}
-                    </button>
-                  ))}
+            {/* Session Info */}
+            <div style={{ 
+              background: 'rgba(255, 255, 255, 0.1)', 
+              backdropFilter: 'blur(20px)', 
+              border: '1px solid rgba(255, 255, 255, 0.2)', 
+              borderRadius: '20px', 
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+              padding: '24px' 
+            }}>
+              <h3 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '20px' }}>
+                Estado de la Sesión
+              </h3>
+              
+              <div style={{ marginBottom: '16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                  <div style={{ 
+                    width: '8px', 
+                    height: '8px', 
+                    borderRadius: '50%', 
+                    background: connectionStatus === 'connected' ? '#10b981' : '#fbbf24' 
+                  }}></div>
+                  <span style={{ fontSize: '14px' }}>
+                    {connectionStatus === 'connected' ? 'Conectado a Supabase' : 'Modo demostración'}
+                  </span>
                 </div>
-                
-                <div style={{ marginTop: '30px', padding: '16px', background: 'rgba(139, 92, 246, 0.1)', borderRadius: '12px', border: '1px solid rgba(139, 92, 246, 0.3)' }}>
-                  <div style={{ fontSize: '14px', fontWeight: '600', marginBottom: '8px' }}>💡 Consejo</div>
-                  <div style={{ fontSize: '13px', opacity: '0.9', lineHeight: '1.4' }}>
-                    Sé específico en tus preguntas para obtener respuestas más precisas. Puedo analizar datos, comparar información y generar insights basados en tus documentos.
-                  </div>
+              </div>
+              
+              <div style={{ marginBottom: '16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981' }}></div>
+                  <span style={{ fontSize: '14px' }}>Mensajes: {messages.length}</span>
+                </div>
+              </div>
+              
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981' }}></div>
+                  <span style={{ fontSize: '14px' }}>RAG activo</span>
                 </div>
               </div>
             </div>
           </div>
         </div>
       </div>
-    </>
+    </div>
   )
 }
