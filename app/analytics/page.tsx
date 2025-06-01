@@ -1,405 +1,440 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 
-export default function AnalyticsPage() {
-  const [userEmail, setUserEmail] = useState('')
+export default function ModernAnalyticsPage() {
+  const [currentTime, setCurrentTime] = useState('')
+  const [selectedPeriod, setSelectedPeriod] = useState('month')
+  const [selectedMetric, setSelectedMetric] = useState('usage')
   const router = useRouter()
 
   useEffect(() => {
-    const isLoggedIn = localStorage.getItem('isLoggedIn')
-    const email = localStorage.getItem('userEmail')
-    
-    if (!isLoggedIn) {
-      router.push('/login')
-    } else {
-      setUserEmail(email || 'admin@test.com')
+    const updateTime = () => {
+      const now = new Date()
+      setCurrentTime(now.toLocaleString('es-ES', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      }))
     }
-  }, [router])
+    
+    updateTime()
+    const interval = setInterval(updateTime, 1000)
+    return () => clearInterval(interval)
+  }, [])
 
   const handleLogout = () => {
-    localStorage.removeItem('isLoggedIn')
     localStorage.removeItem('userEmail')
     router.push('/login')
   }
 
+  // Datos simulados para analytics
+  const analyticsData = {
+    overview: {
+      totalQueries: 2847,
+      avgResponseTime: 1.2,
+      successRate: 98.5,
+      activeUsers: 156
+    },
+    recentQueries: [
+      { id: 1, query: "¿Cuáles fueron las ventas del Q4?", time: "10:30", accuracy: 96 },
+      { id: 2, query: "Analiza el reporte financiero", time: "10:15", accuracy: 94 },
+      { id: 3, query: "Tendencias de mercado 2025", time: "09:45", accuracy: 98 },
+      { id: 4, query: "Datos de retención de clientes", time: "09:30", accuracy: 92 },
+      { id: 5, query: "Comparación con competencia", time: "09:15", accuracy: 89 }
+    ],
+    topDocuments: [
+      { name: "Reporte Financiero Q4.pdf", queries: 89, accuracy: 96 },
+      { name: "Análisis de Mercado.docx", queries: 67, accuracy: 94 },
+      { name: "Manual de Usuario.pdf", queries: 54, accuracy: 98 },
+      { name: "Datos de Ventas.xlsx", queries: 43, accuracy: 92 },
+      { name: "Políticas Empresa.pdf", queries: 38, accuracy: 95 }
+    ],
+    performanceMetrics: [
+      { hour: "00:00", queries: 12, avgTime: 1.1 },
+      { hour: "03:00", queries: 8, avgTime: 1.0 },
+      { hour: "06:00", queries: 23, avgTime: 1.3 },
+      { hour: "09:00", queries: 156, avgTime: 1.2 },
+      { hour: "12:00", queries: 234, avgTime: 1.4 },
+      { hour: "15:00", queries: 189, avgTime: 1.1 },
+      { hour: "18:00", queries: 145, avgTime: 1.3 },
+      { hour: "21:00", queries: 67, avgTime: 1.2 }
+    ]
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Top Navigation Bar */}
-      <nav className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex items-center">
-              <div className="flex items-center">
-                <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center mr-3">
-                  <span className="text-white text-sm">🇺🇸</span>
+    <>
+      <style jsx global>{`
+        * {
+          margin: 0;
+          padding: 0;
+          box-sizing: border-box;
+        }
+        
+        body {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+          background: linear-gradient(135deg, #0f172a 0%, #581c87 50%, #0f172a 100%);
+          min-height: 100vh;
+          color: white;
+        }
+        
+        .glass-card {
+          background: rgba(255, 255, 255, 0.1);
+          backdrop-filter: blur(20px);
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          border-radius: 20px;
+          box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+        
+        .header-glass {
+          background: rgba(255, 255, 255, 0.1);
+          backdrop-filter: blur(20px);
+          border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .metric-card {
+          background: rgba(255, 255, 255, 0.1);
+          backdrop-filter: blur(20px);
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          border-radius: 16px;
+          padding: 24px;
+          text-align: center;
+          transition: all 0.3s ease;
+          position: relative;
+          overflow: hidden;
+        }
+        
+        .metric-card::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 3px;
+          background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%);
+        }
+        
+        .metric-card:hover {
+          transform: translateY(-4px);
+          box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+        }
+        
+        .btn-secondary {
+          background: rgba(255, 255, 255, 0.1);
+          border: 1px solid rgba(255, 255, 255, 0.3);
+          color: white;
+          padding: 8px 16px;
+          border-radius: 8px;
+          cursor: pointer;
+          transition: all 0.3s ease;
+        }
+        
+        .btn-secondary:hover {
+          background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .select-input {
+          background: rgba(255, 255, 255, 0.1);
+          border: 1px solid rgba(255, 255, 255, 0.3);
+          border-radius: 8px;
+          padding: 8px 12px;
+          color: white;
+          font-size: 14px;
+          cursor: pointer;
+        }
+        
+        .select-input:focus {
+          outline: none;
+          border-color: #8b5cf6;
+        }
+        
+        .query-row {
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 12px;
+          padding: 16px;
+          margin-bottom: 12px;
+          transition: all 0.3s ease;
+        }
+        
+        .query-row:hover {
+          background: rgba(255, 255, 255, 0.1);
+          border-color: rgba(139, 92, 246, 0.3);
+          transform: translateX(4px);
+        }
+        
+        .nav-link {
+          color: rgba(255, 255, 255, 0.8);
+          text-decoration: none;
+          padding: 8px 16px;
+          border-radius: 8px;
+          transition: all 0.3s ease;
+          margin-right: 12px;
+        }
+        
+        .nav-link:hover {
+          background: rgba(255, 255, 255, 0.1);
+          color: white;
+        }
+        
+        .nav-link.active {
+          background: rgba(139, 92, 246, 0.3);
+          color: white;
+        }
+        
+        .chart-container {
+          background: rgba(255, 255, 255, 0.05);
+          border-radius: 12px;
+          padding: 20px;
+          margin-top: 20px;
+          height: 200px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .accuracy-badge {
+          padding: 4px 8px;
+          border-radius: 12px;
+          font-size: 12px;
+          font-weight: 600;
+        }
+        
+        .accuracy-high {
+          background: rgba(16, 185, 129, 0.2);
+          color: #10b981;
+        }
+        
+        .accuracy-medium {
+          background: rgba(251, 191, 36, 0.2);
+          color: #fbbf24;
+        }
+        
+        .accuracy-low {
+          background: rgba(239, 68, 68, 0.2);
+          color: #ef4444;
+        }
+        
+        .container {
+          max-width: 1200px;
+          margin: 0 auto;
+          padding: 0 20px;
+        }
+        
+        @media (max-width: 768px) {
+          .metrics-grid {
+            grid-template-columns: 1fr 1fr !important;
+          }
+          
+          .analytics-grid {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
+
+      <div style={{ background: 'linear-gradient(135deg, #0f172a 0%, #581c87 50%, #0f172a 100%)', minHeight: '100vh' }}>
+        {/* Header */}
+        <header className="header-glass">
+          <div className="container">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: '70px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                <div style={{ 
+                  width: '40px', 
+                  height: '40px', 
+                  background: 'linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)',
+                  borderRadius: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '18px',
+                  fontWeight: 'bold'
+                }}>
+                  AI
                 </div>
-                <span className="text-xl font-semibold text-blue-600">AI RAG Agent</span>
-                <span className="ml-3 text-sm text-gray-500">User: YES | Name: admin@test.com</span>
+                <h1 style={{ fontSize: '24px', fontWeight: 'bold' }}>Sistema RAG Avanzado</h1>
+              </div>
+              
+              <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                <span style={{ fontSize: '14px', opacity: '0.8' }}>{currentTime}</span>
+                <button onClick={handleLogout} className="btn-secondary">
+                  Cerrar Sesión
+                </button>
               </div>
             </div>
+          </div>
+        </header>
 
-            <div className="flex items-center space-x-8">
-              <Link href="/dashboard" className="text-gray-500 hover:text-gray-900 px-3 py-2 text-sm font-medium">
-                Dashboard
-              </Link>
-              <Link href="/chat" className="text-gray-500 hover:text-gray-900 px-3 py-2 text-sm font-medium">
-                Chat
-              </Link>
-              <Link href="/analytics" className="text-gray-900 hover:text-blue-600 px-3 py-2 text-sm font-medium border-b-2 border-blue-600">
-                Analytics
-              </Link>
-              <Link href="/upload" className="text-gray-500 hover:text-gray-900 px-3 py-2 text-sm font-medium">
-                Upload
-              </Link>
-              <Link href="/documents" className="text-gray-500 hover:text-gray-900 px-3 py-2 text-sm font-medium">
-                Documents
-              </Link>
-            </div>
-
-            <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-700">Hola, {userEmail}</span>
-              <button
-                onClick={handleLogout}
-                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded text-sm font-medium"
-              >
-                Logout
-              </button>
-            </div>
+        {/* Navigation */}
+        <div className="container">
+          <div style={{ padding: '20px 0', borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>
+            <Link href="/dashboard" className="nav-link">Dashboard</Link>
+            <Link href="/chat" className="nav-link">Chat</Link>
+            <Link href="/analytics" className="nav-link active">Analytics</Link>
+            <Link href="/upload" className="nav-link">Upload</Link>
+            <Link href="/documents" className="nav-link">Documents</Link>
           </div>
         </div>
-      </nav>
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="px-4 py-6 sm:px-0">
-          {/* Breadcrumb */}
-          <div className="mb-6">
-            <Link href="/dashboard" className="text-blue-600 hover:text-blue-800 text-sm">
-              ← Volver al Dashboard
-            </Link>
+        <div className="container" style={{ padding: '40px 20px' }}>
+          {/* Header Section */}
+          <div style={{ marginBottom: '40px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ fontSize: '32px' }}>📊</div>
+                <h1 style={{ fontSize: '36px', fontWeight: 'bold' }}>Analytics & Insights</h1>
+              </div>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <select
+                  value={selectedPeriod}
+                  onChange={(e) => setSelectedPeriod(e.target.value)}
+                  className="select-input"
+                >
+                  <option value="day">Último día</option>
+                  <option value="week">Última semana</option>
+                  <option value="month">Último mes</option>
+                  <option value="quarter">Último trimestre</option>
+                </select>
+                <button className="btn-secondary">📥 Exportar</button>
+              </div>
+            </div>
+            <p style={{ fontSize: '18px', opacity: '0.8' }}>
+              Métricas de rendimiento y análisis del sistema RAG
+            </p>
           </div>
 
-          {/* Page Header */}
-          <div className="mb-8 flex justify-between items-center">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 flex items-center">
-                <span className="text-blue-600 mr-3">📊</span>
-                Analytics Dashboard
-              </h1>
-              <p className="mt-2 text-gray-600">Métricas en tiempo real del sistema RAG</p>
-            </div>
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center text-sm text-gray-600">
-                <span className="mr-2">⏰ Tiempo Real</span>
-                <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+          {/* Metrics Overview */}
+          <div className="metrics-grid" style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(4, 1fr)', 
+            gap: '20px', 
+            marginBottom: '40px' 
+          }}>
+            <div className="metric-card">
+              <div style={{ fontSize: '32px', fontWeight: 'bold', marginBottom: '8px', color: '#3b82f6' }}>
+                {analyticsData.overview.totalQueries.toLocaleString()}
               </div>
-              <span className="text-sm text-gray-500">Última actualización: 2:47:30 a.m.</span>
+              <div style={{ fontSize: '14px', opacity: '0.8', marginBottom: '4px' }}>Total Consultas</div>
+              <div style={{ fontSize: '12px', color: '#10b981' }}>+12% vs mes anterior</div>
             </div>
-          </div>
-
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            {/* Usuarios Total */}
-            <div className="bg-white overflow-hidden shadow-sm rounded-lg border border-gray-200">
-              <div className="p-6">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                      <span className="text-blue-600 text-lg">👥</span>
-                    </div>
-                  </div>
-                  <div className="ml-4 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">
-                        Usuarios Total
-                      </dt>
-                      <dd className="text-2xl font-bold text-gray-900">1,247</dd>
-                      <dd className="text-sm text-green-600">+4.82% vs mes anterior</dd>
-                    </dl>
-                  </div>
-                </div>
+            
+            <div className="metric-card">
+              <div style={{ fontSize: '32px', fontWeight: 'bold', marginBottom: '8px', color: '#10b981' }}>
+                {analyticsData.overview.avgResponseTime}s
               </div>
+              <div style={{ fontSize: '14px', opacity: '0.8', marginBottom: '4px' }}>Tiempo Promedio</div>
+              <div style={{ fontSize: '12px', color: '#10b981' }}>-0.3s mejora</div>
             </div>
-
-            {/* Documentos */}
-            <div className="bg-white overflow-hidden shadow-sm rounded-lg border border-gray-200">
-              <div className="p-6">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                      <span className="text-green-600 text-lg">📄</span>
-                    </div>
-                  </div>
-                  <div className="ml-4 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">
-                        Documentos
-                      </dt>
-                      <dd className="text-2xl font-bold text-gray-900">3,421</dd>
-                      <dd className="text-sm text-green-600">+14.6% vs mes anterior</dd>
-                    </dl>
-                  </div>
-                </div>
+            
+            <div className="metric-card">
+              <div style={{ fontSize: '32px', fontWeight: 'bold', marginBottom: '8px', color: '#ec4899' }}>
+                {analyticsData.overview.successRate}%
               </div>
+              <div style={{ fontSize: '14px', opacity: '0.8', marginBottom: '4px' }}>Tasa de Éxito</div>
+              <div style={{ fontSize: '12px', color: '#10b981' }}>+2.1% mejora</div>
             </div>
-
-            {/* Consultas RAG */}
-            <div className="bg-white overflow-hidden shadow-sm rounded-lg border border-gray-200">
-              <div className="p-6">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                      <span className="text-purple-600 text-lg">💬</span>
-                    </div>
-                  </div>
-                  <div className="ml-4 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">
-                        Consultas RAG
-                      </dt>
-                      <dd className="text-2xl font-bold text-gray-900">15,673</dd>
-                      <dd className="text-sm text-green-600">+21.1% vs mes anterior</dd>
-                    </dl>
-                  </div>
-                </div>
+            
+            <div className="metric-card">
+              <div style={{ fontSize: '32px', fontWeight: 'bold', marginBottom: '8px', color: '#fbbf24' }}>
+                {analyticsData.overview.activeUsers}
               </div>
-            </div>
-
-            {/* Tiempo Respuesta */}
-            <div className="bg-white overflow-hidden shadow-sm rounded-lg border border-gray-200">
-              <div className="p-6">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <div className="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center">
-                      <span className="text-yellow-600 text-lg">⚡</span>
-                    </div>
-                  </div>
-                  <div className="ml-4 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">
-                        Tiempo Respuesta
-                      </dt>
-                      <dd className="text-2xl font-bold text-gray-900">2.3s</dd>
-                      <dd className="text-sm text-red-600">+6.26% vs mes anterior</dd>
-                    </dl>
-                  </div>
-                </div>
-              </div>
+              <div style={{ fontSize: '14px', opacity: '0.8', marginBottom: '4px' }}>Usuarios Activos</div>
+              <div style={{ fontSize: '12px', color: '#10b981' }}>+8 nuevos hoy</div>
             </div>
           </div>
 
-          {/* Charts Section */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-            {/* Actividad por Hora */}
-            <div className="bg-white shadow-sm rounded-lg border border-gray-200">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <h3 className="text-lg font-medium text-gray-900 flex items-center">
-                  <span className="text-blue-500 mr-2">📈</span>
-                  Actividad por Hora (Últimas 24h)
-                </h3>
+          <div className="analytics-grid" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '30px' }}>
+            
+            {/* Performance Chart */}
+            <div className="glass-card" style={{ padding: '30px' }}>
+              <h2 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '20px' }}>Rendimiento por Hora</h2>
+              
+              <div className="chart-container">
+                <div style={{ textAlign: 'center', opacity: '0.7' }}>
+                  <div style={{ fontSize: '48px', marginBottom: '16px' }}>📈</div>
+                  <div>Gráfico de consultas por hora</div>
+                  <div style={{ fontSize: '14px', marginTop: '8px' }}>
+                    Pico: 234 consultas a las 12:00
+                  </div>
+                </div>
               </div>
-              <div className="p-6">
-                <div className="h-64 flex items-end justify-between space-x-2">
-                  {/* Simulated Chart Bars */}
-                  {[45, 23, 56, 78, 34, 89, 67, 45, 23, 67, 89, 12, 34, 56, 78, 90, 67, 45, 23, 56, 78, 89, 67, 45].map((height, i) => (
-                    <div key={i} className="flex flex-col items-center">
-                      <div 
-                        className="w-8 bg-gradient-to-t from-blue-400 to-green-400 rounded-t"
-                        style={{height: `${height}%`}}
-                      ></div>
-                      <span className="text-xs text-gray-500 mt-2">
-                        {String(i).padStart(2, '0')}:00
+              
+              <div style={{ marginTop: '20px', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
+                {analyticsData.performanceMetrics.slice(0, 4).map((metric, index) => (
+                  <div key={index} style={{ textAlign: 'center', padding: '12px', background: 'rgba(255, 255, 255, 0.05)', borderRadius: '8px' }}>
+                    <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#8b5cf6' }}>{metric.queries}</div>
+                    <div style={{ fontSize: '12px', opacity: '0.8' }}>{metric.hour}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Top Documents */}
+            <div className="glass-card" style={{ padding: '30px' }}>
+              <h2 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '20px' }}>Documentos Más Consultados</h2>
+              
+              <div>
+                {analyticsData.topDocuments.map((doc, index) => (
+                  <div key={index} style={{ 
+                    background: 'rgba(255, 255, 255, 0.05)', 
+                    borderRadius: '12px', 
+                    padding: '16px', 
+                    marginBottom: '12px',
+                    border: '1px solid rgba(255, 255, 255, 0.1)'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <div style={{ fontSize: '14px', fontWeight: '600' }}>{doc.name}</div>
+                      <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#8b5cf6' }}>{doc.queries}</div>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ fontSize: '12px', opacity: '0.7' }}>consultas</div>
+                      <span className={`accuracy-badge ${doc.accuracy >= 95 ? 'accuracy-high' : doc.accuracy >= 90 ? 'accuracy-medium' : 'accuracy-low'}`}>
+                        {doc.accuracy}% precisión
                       </span>
                     </div>
-                  ))}
-                </div>
-                <div className="mt-4 flex justify-between text-sm text-gray-600">
-                  <div className="flex items-center">
-                    <div className="w-3 h-3 bg-blue-400 rounded mr-2"></div>
-                    <span>Usuarios</span>
                   </div>
-                  <div className="flex items-center">
-                    <div className="w-3 h-3 bg-green-400 rounded mr-2"></div>
-                    <span>Consultas</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Tendencias Semanales */}
-            <div className="bg-white shadow-sm rounded-lg border border-gray-200">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <h3 className="text-lg font-medium text-gray-900 flex items-center">
-                  <span className="text-green-500 mr-2">📊</span>
-                  Tendencias Semanales
-                </h3>
-              </div>
-              <div className="p-6">
-                <div className="h-64 flex items-end justify-between space-x-4">
-                  {/* Weekly Bar Chart */}
-                  {[
-                    {day: 'Lun', usuarios: 60, documentos: 40, consultas: 80},
-                    {day: 'Mar', usuarios: 45, documentos: 30, consultas: 65},
-                    {day: 'Mie', usuarios: 80, documentos: 60, consultas: 70},
-                    {day: 'Jue', usuarios: 70, documentos: 50, consultas: 85},
-                    {day: 'Vie', usuarios: 90, documentos: 70, consultas: 95},
-                    {day: 'Sab', usuarios: 40, documentos: 25, consultas: 50},
-                    {day: 'Dom', usuarios: 30, documentos: 20, consultas: 45}
-                  ].map((data, i) => (
-                    <div key={i} className="flex flex-col items-center">
-                      <div className="flex items-end space-x-1">
-                        <div 
-                          className="w-4 bg-blue-500 rounded-t"
-                          style={{height: `${data.usuarios * 2}px`}}
-                        ></div>
-                        <div 
-                          className="w-4 bg-yellow-500 rounded-t"
-                          style={{height: `${data.documentos * 2}px`}}
-                        ></div>
-                        <div 
-                          className="w-4 bg-green-500 rounded-t"
-                          style={{height: `${data.consultas * 2}px`}}
-                        ></div>
-                      </div>
-                      <span className="text-xs text-gray-500 mt-2">{data.day}</span>
-                    </div>
-                  ))}
-                </div>
-                <div className="mt-4 flex justify-between text-sm text-gray-600">
-                  <div className="flex items-center">
-                    <div className="w-3 h-3 bg-blue-500 rounded mr-2"></div>
-                    <span>Usuarios</span>
-                  </div>
-                  <div className="flex items-center">
-                    <div className="w-3 h-3 bg-yellow-500 rounded mr-2"></div>
-                    <span>Documentos</span>
-                  </div>
-                  <div className="flex items-center">
-                    <div className="w-3 h-3 bg-green-500 rounded mr-2"></div>
-                    <span>Consultas</span>
-                  </div>
-                </div>
+                ))}
               </div>
             </div>
           </div>
 
-          {/* Bottom Section */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Salud del Sistema */}
-            <div className="bg-white shadow-sm rounded-lg border border-gray-200">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <h3 className="text-lg font-medium text-gray-900 flex items-center">
-                  <span className="text-purple-500 mr-2">💚</span>
-                  Salud del Sistema
-                </h3>
-              </div>
-              <div className="p-6 space-y-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-700">CPU</span>
-                  <div className="flex items-center">
-                    <div className="w-32 bg-gray-200 rounded-full h-2 mr-3">
-                      <div className="bg-green-500 h-2 rounded-full" style={{width: '45%'}}></div>
-                    </div>
-                    <span className="text-sm text-gray-600">45%</span>
-                  </div>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-700">Memoria</span>
-                  <div className="flex items-center">
-                    <div className="w-32 bg-gray-200 rounded-full h-2 mr-3">
-                      <div className="bg-yellow-500 h-2 rounded-full" style={{width: '67%'}}></div>
-                    </div>
-                    <span className="text-sm text-gray-600">67%</span>
-                  </div>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-700">Almacenamiento</span>
-                  <div className="flex items-center">
-                    <div className="w-32 bg-gray-200 rounded-full h-2 mr-3">
-                      <div className="bg-orange-500 h-2 rounded-full" style={{width: '23%'}}></div>
-                    </div>
-                    <span className="text-sm text-gray-600">23%</span>
-                  </div>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-700">Uptime</span>
-                  <div className="flex items-center">
-                    <div className="w-32 bg-gray-200 rounded-full h-2 mr-3">
-                      <div className="bg-green-500 h-2 rounded-full" style={{width: '99%'}}></div>
-                    </div>
-                    <span className="text-sm text-gray-600">99.9%</span>
-                  </div>
-                </div>
-              </div>
+          {/* Recent Queries */}
+          <div className="glass-card" style={{ padding: '30px', marginTop: '30px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+              <h2 style={{ fontSize: '24px', fontWeight: 'bold' }}>Consultas Recientes</h2>
+              <button className="btn-secondary">Ver todas</button>
             </div>
-
-            {/* Documentos Más Consultados */}
-            <div className="bg-white shadow-sm rounded-lg border border-gray-200">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <h3 className="text-lg font-medium text-gray-900 flex items-center">
-                  <span className="text-blue-500 mr-2">📑</span>
-                  Documentos Más Consultados
-                </h3>
-              </div>
-              <div className="p-6">
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
-                        <span className="text-blue-600 text-sm">📄</span>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">Manual_Usuario.pdf</p>
-                        <p className="text-xs text-gray-500">234 consultas</p>
-                      </div>
+            
+            <div>
+              {analyticsData.recentQueries.map((query, index) => (
+                <div key={query.id} className="query-row">
+                  <div style={{ display: 'grid', gridTemplateColumns: '3fr 1fr 1fr', gap: '16px', alignItems: 'center' }}>
+                    <div>
+                      <div style={{ fontWeight: '600', marginBottom: '4px' }}>{query.query}</div>
+                      <div style={{ fontSize: '14px', opacity: '0.7' }}>Consulta #{query.id}</div>
                     </div>
-                    <span className="text-sm font-medium text-gray-900">234</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center mr-3">
-                        <span className="text-green-600 text-sm">📄</span>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">Politicas_Empresa.docx</p>
-                        <p className="text-xs text-gray-500">189 consultas</p>
-                      </div>
+                    
+                    <div style={{ textAlign: 'center' }}>
+                      <div style={{ fontSize: '14px', opacity: '0.8' }}>{query.time}</div>
                     </div>
-                    <span className="text-sm font-medium text-gray-900">189</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center mr-3">
-                        <span className="text-purple-600 text-sm">📄</span>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">Guia_Procesos.pdf</p>
-                        <p className="text-xs text-gray-500">156 consultas</p>
-                      </div>
+                    
+                    <div style={{ textAlign: 'right' }}>
+                      <span className={`accuracy-badge ${query.accuracy >= 95 ? 'accuracy-high' : query.accuracy >= 90 ? 'accuracy-medium' : 'accuracy-low'}`}>
+                        {query.accuracy}%
+                      </span>
                     </div>
-                    <span className="text-sm font-medium text-gray-900">156</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <div className="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center mr-3">
-                        <span className="text-yellow-600 text-sm">📄</span>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">FAQ_Sistema.txt</p>
-                        <p className="text-xs text-gray-500">134 consultas</p>
-                      </div>
-                    </div>
-                    <span className="text-sm font-medium text-gray-900">134</span>
                   </div>
                 </div>
-              </div>
+              ))}
             </div>
           </div>
         </div>
-      </main>
-    </div>
+      </div>
+    </>
   )
 }
