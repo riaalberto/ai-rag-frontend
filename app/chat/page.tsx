@@ -477,11 +477,13 @@ export default function RealChatRAG() {
                   }}
                   onMouseOver={(e) => {
                     if (!isLoading) {
-                      e.target.style.background = 'rgba(255, 255, 255, 0.2)'
+                      const target = e.target as HTMLButtonElement
+                      target.style.background = 'rgba(255, 255, 255, 0.2)'
                     }
                   }}
                   onMouseOut={(e) => {
-                    e.target.style.background = 'rgba(255, 255, 255, 0.1)'
+                    const target = e.target as HTMLButtonElement
+                    target.style.background = 'rgba(255, 255, 255, 0.1)'
                   }}
                 >
                   💡 {question}
