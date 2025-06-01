@@ -25,13 +25,13 @@ const initSupabase = async () => {
   }
 }
 
-export default function RealChatRAG() {
+export default function CompleteRAGChat() {
   const [currentTime, setCurrentTime] = useState('')
   const [messages, setMessages] = useState([
     {
       id: 1,
       type: 'assistant',
-      content: '¡Hola! Soy tu asistente RAG conectado a tu base de datos real. Puedo responder preguntas sobre tus documentos. ¿En qué puedo ayudarte?',
+      content: '¡Hola! Soy tu asistente RAG conectado a tu base de datos real de Supabase. Puedo responder preguntas específicas sobre tus documentos, incluyendo artículos del CFF, manuales, FAQ y políticas. ¿En qué puedo ayudarte?',
       timestamp: new Date().toLocaleTimeString()
     }
   ])
@@ -71,12 +71,25 @@ export default function RealChatRAG() {
   const initializeSupabase = async () => {
     try {
       setConnectionStatus('connecting')
+      console.log('🔄 Inicializando conexión Supabase...')
+      
       const client = await initSupabase()
       setSupabaseClient(client)
       
       if (client) {
-        setConnectionStatus('connected')
-        console.log('✅ Chat conectado a Supabase')
+        // Test connection
+        const { data, error } = await client
+          .from('documents')
+          .select('count')
+          .limit(1)
+        
+        if (error) {
+          console.error('❌ Error de conexión:', error)
+          setConnectionStatus('error')
+        } else {
+          setConnectionStatus('connected')
+          console.log('✅ Chat RAG conectado a Supabase exitosamente')
+        }
       } else {
         setConnectionStatus('mock')
         console.log('⚠️ Chat usando modo demostración')
@@ -93,18 +106,30 @@ export default function RealChatRAG() {
 
   const searchInDocuments = async (query) => {
     if (!supabaseClient) {
+      console.warn('⚠️ Cliente Supabase no disponible')
       return null
     }
 
     try {
       console.log('🔍 Buscando en documentos:', query)
       
-      // Buscar en el contenido de los documentos
-      const { data, error } = await supabaseClient
+      // Buscar en el contenido de los documentos con múltiples estrategias
+      const searchTerms = query.toLowerCase().split(' ').filter(term => term.length > 2)
+      
+      let searchQuery = supabaseClient
         .from('documents')
         .select('name, content')
-        .ilike('content', `%${query}%`)
-        .limit(5)
+      
+      // Si es una búsqueda específica de artículos CFF
+      if (query.toLowerCase().includes('articulo') || query.toLowerCase().includes('artículo')) {
+        searchQuery = searchQuery.or('content.ilike.%artículo%,content.ilike.%código fiscal%,name.ilike.%cff%')
+      } else {
+        // Búsqueda general en contenido
+        const searchPattern = searchTerms.map(term => `content.ilike.%${term}%`).join(',')
+        searchQuery = searchQuery.or(searchPattern)
+      }
+      
+      const { data, error } = await searchQuery.limit(5)
 
       if (error) {
         console.error('❌ Error buscando:', error)
@@ -119,43 +144,95 @@ export default function RealChatRAG() {
     }
   }
 
+  const extractArticleContent = (content, articleNumber) => {
+    if (!content) return null
+    
+    try {
+      // Buscar el artículo específico con diferentes patrones
+      const patterns = [
+        new RegExp(`art[íi]culo\\s*${articleNumber}[^\\d].*?(?=art[íi]culo\\s*\\d|$)`, 'is'),
+        new RegExp(`art\\.?\\s*${articleNumber}[^\\d].*?(?=art\\.?\\s*\\d|$)`, 'is'),
+        new RegExp(`${articleNumber}\\.[^\\d].*?(?=\\d+\\.|$)`, 'is')
+      ]
+      
+      for (const pattern of patterns) {
+        const match = content.match(pattern)
+        if (match) {
+          return match[0].trim()
+        }
+      }
+      
+      return null
+    } catch (error) {
+      console.error('❌ Error extrayendo artículo:', error)
+      return null
+    }
+  }
+
   const generateRAGResponse = async (query, documents) => {
     if (!documents || documents.length === 0) {
-      return `No encontré información específica sobre "${query}" en tus documentos. Los documentos disponibles incluyen manuales, análisis, FAQ y políticas empresariales. ¿Podrías ser más específico sobre qué información necesitas?`
+      return `No encontré información específica sobre "${query}" en tu base de datos. 
+
+📚 **Documentos disponibles:**
+- Datos_Gonpal_1.xlsx
+- ANALYSIS_Datos_Gonpal_1.xlsx  
+- FAQ_Sistema.txt
+- Manual_Usuario.pdf
+- CFF.pdf
+- Guia_Procesos.pdf
+- Politicas_Empresa.docx
+
+¿Podrías ser más específico sobre qué información necesitas de estos documentos?`
     }
 
-    // Crear contexto con el contenido de los documentos
-    const context = documents.map(doc => {
-      const preview = doc.content ? doc.content.substring(0, 500) : 'Sin contenido'
-      return `**${doc.name}**: ${preview}...`
-    }).join('\n\n')
-
     // Buscar específicamente artículos del CFF
-    if (query.toLowerCase().includes('articulo') && query.toLowerCase().includes('cff')) {
+    const articleMatch = query.match(/articulo\s*(\d+)/i) || query.match(/art[íi]culo\s*(\d+)/i)
+    
+    if (articleMatch && query.toLowerCase().includes('cff')) {
+      const articleNum = articleMatch[1]
       const cffDoc = documents.find(doc => 
         doc.name.toLowerCase().includes('cff') || 
-        doc.content?.toLowerCase().includes('codigo fiscal')
+        doc.content?.toLowerCase().includes('codigo fiscal') ||
+        doc.content?.toLowerCase().includes('código fiscal')
       )
       
       if (cffDoc) {
-        const content = cffDoc.content || ''
-        const articleMatch = query.match(/articulo\s*(\d+)/i)
+        const articleContent = extractArticleContent(cffDoc.content, articleNum)
         
-        if (articleMatch) {
-          const articleNum = articleMatch[1]
-          // Buscar el artículo específico en el contenido
-          const articleRegex = new RegExp(`art[íi]culo\\s*${articleNum}[^\\d].*?(?=art[íi]culo\\s*\\d|$)`, 'is')
-          const articleContent = content.match(articleRegex)
-          
-          if (articleContent) {
-            return `**Artículo ${articleNum} del Código Fiscal de la Federación:**\n\n${articleContent[0].substring(0, 1000)}...\n\n*Fuente: ${cffDoc.name}*`
-          }
+        if (articleContent) {
+          const truncatedContent = articleContent.length > 800 
+            ? articleContent.substring(0, 800) + '...' 
+            : articleContent
+            
+          return `📋 **Artículo ${articleNum} del Código Fiscal de la Federación:**
+
+${truncatedContent}
+
+*📄 Fuente: ${cffDoc.name}*
+
+¿Te gustaría que busque algún artículo específico relacionado o necesitas más información sobre este tema?`
+        } else {
+          return `❌ No encontré el artículo ${articleNum} en el documento CFF.pdf. 
+
+El documento CFF está disponible pero no pude localizar ese artículo específico. ¿Podrías verificar el número del artículo o intentar con una búsqueda más general sobre el tema que te interesa?`
         }
       }
     }
 
-    // Respuesta general basada en contexto
-    return `Basándome en tus documentos, encontré la siguiente información relevante:\n\n${context}\n\n¿Te gustaría que busque algo más específico en estos documentos?`
+    // Respuesta general basada en contexto de documentos encontrados
+    const context = documents.map(doc => {
+      const preview = doc.content ? doc.content.substring(0, 300) : 'Sin contenido disponible'
+      return `📄 **${doc.name}**:\n${preview}...`
+    }).join('\n\n')
+
+    return `📊 **Información encontrada en tus documentos:**
+
+${context}
+
+🔍 **¿Te gustaría que:**
+- Busque información más específica en alguno de estos documentos?
+- Extraiga algún artículo particular del CFF?
+- Analice algún aspecto específico de estos contenidos?`
   }
 
   const handleSendMessage = async () => {
@@ -169,15 +246,18 @@ export default function RealChatRAG() {
     }
 
     setMessages(prev => [...prev, userMessage])
+    const currentInput = inputMessage
     setInputMessage('')
     setIsLoading(true)
 
     try {
+      console.log('🚀 Procesando pregunta:', currentInput)
+      
       // Buscar en documentos reales
-      const documents = await searchInDocuments(inputMessage)
+      const documents = await searchInDocuments(currentInput)
       
       // Generar respuesta RAG
-      const response = await generateRAGResponse(inputMessage, documents)
+      const response = await generateRAGResponse(currentInput, documents)
 
       const assistantMessage = {
         id: Date.now() + 1,
@@ -187,13 +267,15 @@ export default function RealChatRAG() {
       }
 
       setMessages(prev => [...prev, assistantMessage])
+      console.log('✅ Respuesta RAG generada exitosamente')
+      
     } catch (error) {
       console.error('❌ Error generando respuesta:', error)
       
       const errorMessage = {
         id: Date.now() + 1,
         type: 'assistant',
-        content: 'Disculpa, hubo un error al procesar tu pregunta. ¿Podrías intentarlo de nuevo?',
+        content: '❌ Disculpa, hubo un error al procesar tu pregunta. El sistema está conectado a Supabase pero ocurrió un problema temporal. ¿Podrías intentarlo de nuevo?',
         timestamp: new Date().toLocaleTimeString()
       }
 
@@ -212,14 +294,19 @@ export default function RealChatRAG() {
 
   const handleSuggestedQuestion = (question) => {
     setInputMessage(question)
-    handleSendMessage()
+    // Auto-send suggested questions
+    setTimeout(() => {
+      handleSendMessage()
+    }, 100)
   }
 
   const suggestedQuestions = [
     "¿Qué dice el artículo 32 del CFF?",
     "Explícame el contenido del Manual de Usuario",
     "¿Qué información hay en el FAQ del Sistema?",
-    "Resumen de las políticas de la empresa"
+    "Resumen de las políticas de la empresa",
+    "Artículo 42 del CFF",
+    "¿Qué contiene Guía de Procesos?"
   ]
 
   const handleLogout = () => {
@@ -229,10 +316,10 @@ export default function RealChatRAG() {
 
   const getConnectionBadge = () => {
     const styles = {
-      connecting: { bg: 'rgba(251, 191, 36, 0.2)', color: '#fbbf24', text: '🔄 Conectando...' },
-      connected: { bg: 'rgba(16, 185, 129, 0.2)', color: '#10b981', text: '🔗 RAG Conectado' },
-      mock: { bg: 'rgba(59, 130, 246, 0.2)', color: '#3b82f6', text: '📋 Demo' },
-      error: { bg: 'rgba(239, 68, 68, 0.2)', color: '#ef4444', text: '❌ Error' }
+      connecting: { bg: 'rgba(251, 191, 36, 0.2)', color: '#fbbf24', text: '🔄 Conectando...', pulse: true },
+      connected: { bg: 'rgba(16, 185, 129, 0.2)', color: '#10b981', text: '🔗 RAG Conectado', pulse: false },
+      mock: { bg: 'rgba(59, 130, 246, 0.2)', color: '#3b82f6', text: '📋 Demo', pulse: false },
+      error: { bg: 'rgba(239, 68, 68, 0.2)', color: '#ef4444', text: '❌ Error', pulse: false }
     }
     
     const style = styles[connectionStatus]
@@ -243,7 +330,8 @@ export default function RealChatRAG() {
         padding: '6px 12px',
         borderRadius: '20px',
         fontSize: '12px',
-        fontWeight: '600'
+        fontWeight: '600',
+        animation: style.pulse ? 'pulse 2s infinite' : 'none'
       }}>
         {style.text}
       </div>
@@ -327,9 +415,11 @@ export default function RealChatRAG() {
           </div>
           <p style={{ fontSize: '18px', opacity: '0.8' }}>
             {connectionStatus === 'connected' 
-              ? '🔗 Conectado a tu base de datos - Consulta tus documentos reales'
+              ? '🔗 Conectado a Supabase: peeljvqscrkqmdbvfeag.supabase.co - Consulta tus 7 documentos reales'
               : connectionStatus === 'mock' 
                 ? '📋 Modo demostración - Configura Supabase para acceso real'
+                : connectionStatus === 'error'
+                ? '❌ Error de conexión - Verifica configuración de Supabase'
                 : '🔄 Conectando a base de datos'
             }
           </p>
@@ -350,7 +440,7 @@ export default function RealChatRAG() {
             flexDirection: 'column'
           }}>
             <h2 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '20px' }}>
-              Conversación RAG
+              🤖 Conversación RAG Real
             </h2>
             
             {/* Messages */}
@@ -375,7 +465,7 @@ export default function RealChatRAG() {
                     maxWidth: '80%',
                     border: message.type === 'assistant' ? '1px solid rgba(255, 255, 255, 0.2)' : 'none'
                   }}>
-                    <div style={{ fontSize: '14px', marginBottom: '4px' }}>
+                    <div style={{ fontSize: '14px', marginBottom: '4px', whiteSpace: 'pre-line' }}>
                       {message.content}
                     </div>
                     <div style={{ fontSize: '10px', opacity: '0.6' }}>
@@ -393,7 +483,9 @@ export default function RealChatRAG() {
                     borderRadius: '16px',
                     border: '1px solid rgba(255, 255, 255, 0.2)'
                   }}>
-                    <div style={{ fontSize: '14px' }}>🤔 Buscando en tus documentos...</div>
+                    <div style={{ fontSize: '14px' }}>
+                      🔍 Buscando en tu base de datos de Supabase...
+                    </div>
                   </div>
                 </div>
               )}
@@ -408,7 +500,7 @@ export default function RealChatRAG() {
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
                 onKeyPress={handleKeyPress}
-                placeholder="Pregunta sobre tus documentos..."
+                placeholder="Pregunta sobre tus documentos (ej: artículo 32 del CFF)..."
                 disabled={isLoading}
                 style={{
                   flex: 1,
@@ -453,7 +545,7 @@ export default function RealChatRAG() {
               marginBottom: '24px' 
             }}>
               <h3 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '20px' }}>
-                Preguntas Sugeridas
+                💡 Preguntas Sugeridas
               </h3>
               
               {suggestedQuestions.map((question, index) => (
@@ -470,7 +562,7 @@ export default function RealChatRAG() {
                     width: '100%',
                     marginBottom: '12px',
                     cursor: isLoading ? 'not-allowed' : 'pointer',
-                    textAlign: 'left',
+                    textAlign: 'left' as const,
                     fontSize: '14px',
                     transition: 'all 0.3s ease',
                     opacity: isLoading ? 0.5 : 1
@@ -486,7 +578,7 @@ export default function RealChatRAG() {
                     target.style.background = 'rgba(255, 255, 255, 0.1)'
                   }}
                 >
-                  💡 {question}
+                  {question}
                 </button>
               ))}
             </div>
@@ -501,7 +593,7 @@ export default function RealChatRAG() {
               padding: '24px' 
             }}>
               <h3 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '20px' }}>
-                Estado de la Sesión
+                📊 Estado de la Sesión
               </h3>
               
               <div style={{ marginBottom: '16px' }}>
@@ -510,10 +602,12 @@ export default function RealChatRAG() {
                     width: '8px', 
                     height: '8px', 
                     borderRadius: '50%', 
-                    background: connectionStatus === 'connected' ? '#10b981' : '#fbbf24' 
+                    background: connectionStatus === 'connected' ? '#10b981' : connectionStatus === 'connecting' ? '#fbbf24' : '#ef4444' 
                   }}></div>
                   <span style={{ fontSize: '14px' }}>
-                    {connectionStatus === 'connected' ? 'Conectado a Supabase' : 'Modo demostración'}
+                    {connectionStatus === 'connected' ? 'Conectado a Supabase' : 
+                     connectionStatus === 'connecting' ? 'Conectando...' : 
+                     connectionStatus === 'error' ? 'Error de conexión' : 'Modo demostración'}
                   </span>
                 </div>
               </div>
@@ -525,16 +619,32 @@ export default function RealChatRAG() {
                 </div>
               </div>
               
-              <div>
+              <div style={{ marginBottom: '16px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
                   <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981' }}></div>
-                  <span style={{ fontSize: '14px' }}>RAG activo</span>
+                  <span style={{ fontSize: '14px' }}>RAG Activo</span>
                 </div>
               </div>
+
+              {connectionStatus === 'connected' && (
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981' }}></div>
+                    <span style={{ fontSize: '14px' }}>7 documentos disponibles</span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
       </div>
+
+      <style jsx>{`
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
+        }
+      `}</style>
     </div>
   )
 }
