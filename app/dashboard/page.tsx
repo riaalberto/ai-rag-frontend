@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
-export default function RealModernDashboard() {
+export default function CompleteDashboard() {
   const [userEmail, setUserEmail] = useState('')
   const [currentTime, setCurrentTime] = useState('')
   const [messages, setMessages] = useState([
@@ -43,15 +43,15 @@ export default function RealModernDashboard() {
     
     setTimeout(() => {
       const responses = [
-        'Basándome en los documentos analizados, puedo decirte que...',
-        'He encontrado información relevante en la base de datos de conocimiento...',
-        'Según los datos procesados por el sistema RAG...',
-        'Mi análisis de los documentos muestra que...'
+        'Basándome en los documentos analizados, puedo decirte que los ingresos han aumentado un 23% este trimestre...',
+        'He encontrado información relevante en la base de datos. Las métricas de usuario muestran un crecimiento sostenido...',
+        'Según los datos procesados por el sistema RAG, las tendencias principales indican una mejora en la retención...',
+        'Mi análisis de los documentos muestra patrones interesantes en el comportamiento de los clientes...'
       ]
       const randomResponse = responses[Math.floor(Math.random() * responses.length)]
       const systemMessage = { type: 'system', content: randomResponse }
       setMessages(prev => [...prev, systemMessage])
-    }, 1000)
+    }, 1500)
   }
 
   const handleLogout = () => {
@@ -158,15 +158,18 @@ export default function RealModernDashboard() {
           margin-left: auto;
           max-width: 70%;
           margin-bottom: 16px;
+          box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
         }
         
         .system-message {
           background: rgba(255, 255, 255, 0.2);
+          backdrop-filter: blur(10px);
           color: white;
           padding: 12px 16px;
           border-radius: 18px;
           max-width: 70%;
           margin-bottom: 16px;
+          border: 1px solid rgba(255, 255, 255, 0.2);
         }
         
         .stat-card {
@@ -176,6 +179,12 @@ export default function RealModernDashboard() {
           border-radius: 16px;
           padding: 20px;
           text-align: center;
+          transition: all 0.3s ease;
+        }
+        
+        .stat-card:hover {
+          transform: translateY(-4px);
+          box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
         }
         
         .status-dot {
@@ -193,26 +202,29 @@ export default function RealModernDashboard() {
         
         .suggested-btn {
           background: rgba(255, 255, 255, 0.1);
+          backdrop-filter: blur(10px);
           border: 1px solid rgba(255, 255, 255, 0.2);
           color: white;
-          padding: 12px;
-          border-radius: 8px;
+          padding: 14px 16px;
+          border-radius: 12px;
           width: 100%;
           text-align: left;
           cursor: pointer;
           transition: all 0.3s ease;
-          margin-bottom: 8px;
+          margin-bottom: 12px;
+          font-size: 14px;
         }
         
         .suggested-btn:hover {
           background: rgba(255, 255, 255, 0.2);
-          transform: translateX(4px);
+          transform: translateX(6px);
+          border-color: rgba(139, 92, 246, 0.4);
         }
         
         .action-btn {
           display: block;
           width: 100%;
-          padding: 12px;
+          padding: 14px 16px;
           border-radius: 12px;
           text-decoration: none;
           text-align: center;
@@ -220,26 +232,28 @@ export default function RealModernDashboard() {
           margin-bottom: 12px;
           transition: all 0.3s ease;
           border: 1px solid rgba(255, 255, 255, 0.2);
+          backdrop-filter: blur(10px);
+          font-size: 14px;
         }
         
         .action-upload {
-          background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%);
+          background: linear-gradient(135deg, rgba(139, 92, 246, 0.8) 0%, rgba(236, 72, 153, 0.8) 100%);
           color: white;
         }
         
         .action-analytics {
-          background: linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%);
+          background: linear-gradient(135deg, rgba(59, 130, 246, 0.8) 0%, rgba(6, 182, 212, 0.8) 100%);
           color: white;
         }
         
         .action-settings {
-          background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+          background: linear-gradient(135deg, rgba(107, 114, 128, 0.8) 0%, rgba(75, 85, 99, 0.8) 100%);
           color: white;
         }
         
         .action-btn:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+          transform: translateY(-3px);
+          box-shadow: 0 12px 25px rgba(0, 0, 0, 0.4);
         }
         
         .container {
@@ -262,8 +276,45 @@ export default function RealModernDashboard() {
           margin-bottom: 24px;
         }
         
+        .section-title {
+          font-size: 20px;
+          font-weight: 600;
+          margin-bottom: 20px;
+          color: white;
+        }
+        
+        .status-item {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 12px 0;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .status-item:last-child {
+          border-bottom: none;
+        }
+        
+        .status-label {
+          color: rgba(255, 255, 255, 0.9);
+          font-size: 14px;
+        }
+        
+        .status-value {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          color: #10b981;
+          font-size: 14px;
+          font-weight: 500;
+        }
+        
         @media (max-width: 768px) {
           .grid-2 {
+            grid-template-columns: 1fr;
+          }
+          
+          .grid-stats {
             grid-template-columns: 1fr;
           }
         }
@@ -365,27 +416,27 @@ export default function RealModernDashboard() {
 
               {/* Sistema Status */}
               <div className="glass-card" style={{ padding: '24px', marginBottom: '24px' }}>
-                <h3 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '20px' }}>Estado del Sistema</h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span>Base de Datos</span>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <h3 className="section-title">Estado del Sistema</h3>
+                <div>
+                  <div className="status-item">
+                    <span className="status-label">Base de Datos</span>
+                    <div className="status-value">
                       <div className="status-dot"></div>
-                      <span style={{ color: '#10b981', fontSize: '14px' }}>Online</span>
+                      <span>Online</span>
                     </div>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span>Procesamiento IA</span>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div className="status-item">
+                    <span className="status-label">Procesamiento IA</span>
+                    <div className="status-value">
                       <div className="status-dot"></div>
-                      <span style={{ color: '#10b981', fontSize: '14px' }}>Activo</span>
+                      <span>Activo</span>
                     </div>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span>Vector Store</span>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div className="status-item">
+                    <span className="status-label">Vector Store</span>
+                    <div className="status-value">
                       <div className="status-dot"></div>
-                      <span style={{ color: '#10b981', fontSize: '14px' }}>Operativo</span>
+                      <span>Operativo</span>
                     </div>
                   </div>
                 </div>
@@ -393,7 +444,7 @@ export default function RealModernDashboard() {
 
               {/* Preguntas Sugeridas */}
               <div className="glass-card" style={{ padding: '24px', marginBottom: '24px' }}>
-                <h3 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '20px' }}>Preguntas Sugeridas</h3>
+                <h3 className="section-title">Preguntas Sugeridas</h3>
                 <div>
                   {suggestedQuestions.map((question, index) => (
                     <button
@@ -409,7 +460,7 @@ export default function RealModernDashboard() {
 
               {/* Quick Actions */}
               <div className="glass-card" style={{ padding: '24px' }}>
-                <h3 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '20px' }}>Acciones Rápidas</h3>
+                <h3 className="section-title">Acciones Rápidas</h3>
                 <div>
                   <Link href="/upload" className="action-btn action-upload">
                     📄 Subir Documentos
