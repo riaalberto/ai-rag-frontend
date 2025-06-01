@@ -141,6 +141,11 @@ export default function DashboardWithoutChat() {
           color: white;
         }
         
+        .action-analyzer {
+          background: linear-gradient(135deg, rgba(168, 85, 247, 0.8) 0%, rgba(124, 58, 237, 0.8) 100%);
+          color: white;
+        }
+        
         .action-upload {
           background: linear-gradient(135deg, rgba(59, 130, 246, 0.8) 0%, rgba(6, 182, 212, 0.8) 100%);
           color: white;
@@ -247,6 +252,7 @@ export default function DashboardWithoutChat() {
           <div style={{ padding: '20px 0', borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>
             <Link href="/dashboard" className="nav-link active">Dashboard</Link>
             <Link href="/chat" className="nav-link">Chat</Link>
+            <Link href="/analyzer" className="nav-link">📊 Excel Analyzer</Link>
             <Link href="/analytics" className="nav-link">Analytics</Link>
             <Link href="/upload" className="nav-link">Upload</Link>
             <Link href="/documents" className="nav-link">Documents</Link>
@@ -340,6 +346,10 @@ export default function DashboardWithoutChat() {
                 <div>
                   <Link href="/chat" className="action-btn action-chat">
                     💬 Iniciar Chat RAG
+                  </Link>
+                  
+                  <Link href="/analyzer" className="action-btn action-analyzer">
+                    📊 Excel Analyzer
                   </Link>
                   
                   <Link href="/upload" className="action-btn action-upload">
