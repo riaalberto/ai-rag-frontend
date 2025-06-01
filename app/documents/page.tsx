@@ -3,67 +3,21 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { createClient } from '@supabase/supabase-js'
 
-export default function ModernDocumentsPage() {
+// Initialize Supabase client
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const supabase = createClient(supabaseUrl, supabaseAnonKey)
+
+export default function RealSupabaseDocuments() {
   const [currentTime, setCurrentTime] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
-  const [documents, setDocuments] = useState([
-    {
-      id: 1,
-      name: "Reporte Financiero Q4 2024.pdf",
-      status: "vectorized",
-      uploadDate: "2024-12-15",
-      size: "2.3 MB",
-      type: "pdf",
-      vectorCount: 1247
-    },
-    {
-      id: 2,
-      name: "Manual de Usuario RAG.docx",
-      status: "vectorized",
-      uploadDate: "2024-12-14",
-      size: "1.8 MB",
-      type: "docx",
-      vectorCount: 892
-    },
-    {
-      id: 3,
-      name: "Análisis de Mercado 2025.pdf",
-      status: "processing",
-      uploadDate: "2024-12-14",
-      size: "5.1 MB",
-      type: "pdf",
-      vectorCount: 0
-    },
-    {
-      id: 4,
-      name: "Presentación Ventas.pptx",
-      status: "vectorized",
-      uploadDate: "2024-12-13",
-      size: "4.2 MB",
-      type: "pptx",
-      vectorCount: 654
-    },
-    {
-      id: 5,
-      name: "Base de Datos Clientes.txt",
-      status: "vectorized",
-      uploadDate: "2024-12-12",
-      size: "892 KB",
-      type: "txt",
-      vectorCount: 1834
-    },
-    {
-      id: 6,
-      name: "Documentación API.md",
-      status: "error",
-      uploadDate: "2024-12-11",
-      size: "156 KB",
-      type: "md",
-      vectorCount: 0
-    }
-  ])
+  const [documents, setDocuments] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [connectionStatus, setConnectionStatus] = useState('connecting')
   const router = useRouter()
 
   useEffect(() => {
@@ -83,6 +37,114 @@ export default function ModernDocumentsPage() {
     const interval = setInterval(updateTime, 1000)
     return () => clearInterval(interval)
   }, [])
+
+  useEffect(() => {
+    fetchRealDocuments()
+  }, [])
+
+  const fetchRealDocuments = async () => {
+    try {
+      setLoading(true)
+      setError('')
+      setConnectionStatus('connecting')
+
+      console.log('🔄 Conectando a Supabase...')
+      console.log('📍 URL:', supabaseUrl)
+      
+      // Test connection first
+      const { data: testData, error: testError } = await supabase
+        .from('documents')
+        .select('count')
+        .limit(1)
+
+      if (testError) {
+        console.error('❌ Error de conexión:', testError)
+        setError(`Error de conexión: ${testError.message}`)
+        setConnectionStatus('error')
+        return
+      }
+
+      console.log('✅ Conexión exitosa')
+      setConnectionStatus('connected')
+
+      // Fetch all documents
+      const { data, error: fetchError } = await supabase
+        .from('documents')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      if (fetchError) {
+        console.error('❌ Error obteniendo documentos:', fetchError)
+        setError(`Error obteniendo datos: ${fetchError.message}`)
+        setConnectionStatus('error')
+        return
+      }
+
+      console.log('📊 Datos obtenidos:', data)
+
+      // Transform Supabase data to our format
+      const transformedDocs = data.map(doc => ({
+        id: doc.id,
+        name: doc.name || `Documento ${doc.id.slice(0, 8)}`,
+        status: determineStatus(doc),
+        uploadDate: formatDate(doc.created_at),
+        size: estimateFileSize(doc.content),
+        type: getFileExtension(doc.name || 'unknown.txt'),
+        vectorCount: estimateVectorCount(doc.content),
+        content: doc.content,
+        user_id: doc.user_id
+      }))
+
+      setDocuments(transformedDocs)
+      console.log('✅ Documentos procesados:', transformedDocs.length)
+      setConnectionStatus('connected')
+
+    } catch (error) {
+      console.error('❌ Error general:', error)
+      setError(`Error de conexión: ${error.message}`)
+      setConnectionStatus('error')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const determineStatus = (doc) => {
+    if (doc.content && doc.content.length > 100) {
+      return 'vectorized' // Has substantial content
+    } else if (doc.content && doc.content.length > 0) {
+      return 'processing' // Has some content but not much
+    }
+    return 'error' // No content
+  }
+
+  const formatDate = (dateString) => {
+    return new Date(dateString).toISOString().split('T')[0]
+  }
+
+  const getFileExtension = (filename) => {
+    if (!filename) return 'unknown'
+    return filename.split('.').pop()?.toLowerCase() || 'unknown'
+  }
+
+  const estimateFileSize = (content) => {
+    if (!content) return '0 KB'
+    const bytes = new Blob([content]).size
+    return formatFileSize(bytes)
+  }
+
+  const estimateVectorCount = (content) => {
+    if (!content) return 0
+    // Rough estimate: ~1 vector per 100 characters
+    return Math.floor(content.length / 100)
+  }
+
+  const formatFileSize = (bytes) => {
+    if (bytes === 0) return '0 Bytes'
+    const k = 1024
+    const sizes = ['Bytes', 'KB', 'MB', 'GB']
+    const i = Math.floor(Math.log(bytes) / Math.log(k))
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
+  }
 
   const handleLogout = () => {
     localStorage.removeItem('userEmail')
@@ -131,11 +193,67 @@ export default function ModernDocumentsPage() {
     const icons = {
       pdf: '📄',
       docx: '📝',
+      doc: '📝',
+      xlsx: '📊',
+      xls: '📊',
       txt: '📄',
       pptx: '📊',
-      md: '📋'
+      md: '📋',
+      unknown: '📄'
     }
     return icons[type] || '📄'
+  }
+
+  const deleteDocument = async (docId, docName) => {
+    if (confirm(`¿Estás seguro de eliminar "${docName}"?`)) {
+      try {
+        setLoading(true)
+        const { error } = await supabase
+          .from('documents')
+          .delete()
+          .eq('id', docId)
+
+        if (error) {
+          alert(`Error eliminando documento: ${error.message}`)
+          return
+        }
+
+        // Refresh the list
+        fetchRealDocuments()
+        alert('Documento eliminado exitosamente')
+      } catch (error) {
+        alert(`Error: ${error.message}`)
+      } finally {
+        setLoading(false)
+      }
+    }
+  }
+
+  const viewDocument = (doc) => {
+    const preview = doc.content ? doc.content.slice(0, 200) + '...' : 'Sin contenido'
+    alert(`📄 ${doc.name}\n\n📊 Tamaño: ${doc.size}\n🔢 Vectores: ${doc.vectorCount}\n📅 Creado: ${doc.uploadDate}\n\n📝 Vista previa:\n${preview}`)
+  }
+
+  const getConnectionBadge = () => {
+    const styles = {
+      connecting: { bg: 'rgba(251, 191, 36, 0.2)', color: '#fbbf24', text: '🔄 Conectando...' },
+      connected: { bg: 'rgba(16, 185, 129, 0.2)', color: '#10b981', text: '🔗 Conectado' },
+      error: { bg: 'rgba(239, 68, 68, 0.2)', color: '#ef4444', text: '❌ Error' }
+    }
+    
+    const style = styles[connectionStatus]
+    return (
+      <div style={{
+        background: style.bg,
+        color: style.color,
+        padding: '6px 12px',
+        borderRadius: '20px',
+        fontSize: '12px',
+        fontWeight: '600'
+      }}>
+        {style.text}
+      </div>
+    )
   }
 
   const filteredDocuments = documents.filter(doc => {
@@ -221,6 +339,7 @@ export default function ModernDocumentsPage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <div style={{ fontSize: '32px' }}>📋</div>
               <h1 style={{ fontSize: '36px', fontWeight: 'bold' }}>Gestión de Documentos</h1>
+              {getConnectionBadge()}
             </div>
             <Link 
               href="/upload" 
@@ -237,8 +356,20 @@ export default function ModernDocumentsPage() {
             </Link>
           </div>
           <p style={{ fontSize: '18px', opacity: '0.8' }}>
-            Administra y consulta todos los documentos del sistema RAG
+            🔗 Conectado a Supabase: peeljvqscrkqmdbvfeag.supabase.co - Total: {totalDocuments} documentos
           </p>
+          {error && (
+            <div style={{ 
+              background: 'rgba(239, 68, 68, 0.1)',
+              border: '1px solid rgba(239, 68, 68, 0.3)',
+              borderRadius: '8px',
+              padding: '12px',
+              marginTop: '12px',
+              color: '#ef4444'
+            }}>
+              ❌ {error}
+            </div>
+          )}
         </div>
 
         {/* Stats Cards */}
@@ -304,7 +435,7 @@ export default function ModernDocumentsPage() {
           padding: '24px', 
           marginBottom: '30px' 
         }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '20px', alignItems: 'end' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 120px', gap: '20px', alignItems: 'end' }}>
             <div>
               <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '600' }}>
                 Buscar documentos
@@ -349,6 +480,22 @@ export default function ModernDocumentsPage() {
                 <option value="error">Con errores</option>
               </select>
             </div>
+
+            <button 
+              onClick={fetchRealDocuments}
+              disabled={loading}
+              style={{
+                background: loading ? 'rgba(139, 92, 246, 0.5)' : 'linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)',
+                border: 'none',
+                color: 'white',
+                padding: '12px 16px',
+                borderRadius: '8px',
+                cursor: loading ? 'not-allowed' : 'pointer',
+                fontWeight: '600'
+              }}
+            >
+              {loading ? '⏳' : '🔄'} Sincronizar
+            </button>
           </div>
         </div>
 
@@ -363,25 +510,41 @@ export default function ModernDocumentsPage() {
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
             <h2 style={{ fontSize: '24px', fontWeight: 'bold' }}>
-              Documentos ({filteredDocuments.length})
+              📊 Documentos Reales desde Supabase ({filteredDocuments.length})
             </h2>
-            <button style={{
-              background: 'rgba(255, 255, 255, 0.1)',
-              border: '1px solid rgba(255, 255, 255, 0.3)',
-              color: 'white',
-              padding: '8px 16px',
-              borderRadius: '8px',
-              cursor: 'pointer'
-            }}>
-              🔄 Actualizar
-            </button>
           </div>
           
           <div>
-            {filteredDocuments.length === 0 ? (
+            {loading ? (
+              <div style={{ textAlign: 'center', padding: '40px', opacity: '0.7' }}>
+                <div style={{ fontSize: '48px', marginBottom: '16px' }}>⏳</div>
+                <p>Conectando a Supabase...</p>
+                <p style={{ fontSize: '14px', opacity: '0.6', marginTop: '8px' }}>peeljvqscrkqmdbvfeag.supabase.co</p>
+              </div>
+            ) : error ? (
+              <div style={{ textAlign: 'center', padding: '40px', opacity: '0.7' }}>
+                <div style={{ fontSize: '48px', marginBottom: '16px' }}>❌</div>
+                <p>Error conectando a la base de datos</p>
+                <button 
+                  onClick={fetchRealDocuments}
+                  style={{
+                    background: 'linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)',
+                    border: 'none',
+                    color: 'white',
+                    padding: '8px 16px',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    marginTop: '16px'
+                  }}
+                >
+                  🔄 Reintentar Conexión
+                </button>
+              </div>
+            ) : filteredDocuments.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '40px', opacity: '0.7' }}>
                 <div style={{ fontSize: '48px', marginBottom: '16px' }}>📄</div>
-                <p>No se encontraron documentos que coincidan con los filtros</p>
+                <p>No se encontraron documentos en Supabase</p>
+                <p style={{ fontSize: '14px', opacity: '0.6', marginTop: '8px' }}>Conectado a: peeljvqscrkqmdbvfeag.supabase.co</p>
               </div>
             ) : (
               filteredDocuments.map((doc) => (
@@ -398,13 +561,15 @@ export default function ModernDocumentsPage() {
                     
                     <div>
                       <div style={{ fontWeight: '600', marginBottom: '4px' }}>{doc.name}</div>
-                      <div style={{ fontSize: '14px', opacity: '0.7' }}>{doc.size}</div>
+                      <div style={{ fontSize: '12px', opacity: '0.5', fontFamily: 'monospace' }}>
+                        ID: {doc.id.toString().slice(0, 8)}...
+                      </div>
                     </div>
                     
                     <div>{getStatusBadge(doc.status)}</div>
                     
                     <div style={{ fontSize: '14px', opacity: '0.8' }}>
-                      {new Date(doc.uploadDate).toLocaleDateString('es-ES')}
+                      {doc.uploadDate}
                     </div>
                     
                     <div style={{ fontSize: '14px', opacity: '0.8' }}>
@@ -423,6 +588,7 @@ export default function ModernDocumentsPage() {
                           fontSize: '12px'
                         }}
                         title="Ver detalles"
+                        onClick={() => viewDocument(doc)}
                       >
                         👁️
                       </button>
@@ -437,6 +603,7 @@ export default function ModernDocumentsPage() {
                           fontSize: '12px'
                         }}
                         title="Eliminar"
+                        onClick={() => deleteDocument(doc.id, doc.name)}
                       >
                         🗑️
                       </button>
