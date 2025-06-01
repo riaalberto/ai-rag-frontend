@@ -1,422 +1,453 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 
-interface Document {
-  id: string
-  filename: string
-  size: string
-  uploadDate: string
-  type: string
-  status: 'Listo' | 'Procesando' | 'Error'
-}
-
-export default function DocumentsPage() {
-  const [userEmail, setUserEmail] = useState('')
+export default function ModernDocumentsPage() {
+  const [currentTime, setCurrentTime] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
-  const [statusFilter, setStatusFilter] = useState('Todos los estados')
-  const [sortBy, setSortBy] = useState('Fecha')
-  const router = useRouter()
-
-  // Sample documents data
-  const [documents] = useState<Document[]>([
+  const [statusFilter, setStatusFilter] = useState('all')
+  const [documents, setDocuments] = useState([
     {
-      id: '1',
-      filename: 'ANÁLISIS_Datos_Gonpal_1.xlsx',
-      size: '847 KB',
-      uploadDate: '21 mayo 2024',
-      type: 'XLSX',
-      status: 'Listo'
+      id: 1,
+      name: "Reporte Financiero Q4 2024.pdf",
+      status: "vectorized",
+      uploadDate: "2024-12-15",
+      size: "2.3 MB",
+      type: "pdf",
+      vectorCount: 1247
     },
     {
-      id: '2',
-      filename: 'Datos_Gonpal_1.xlsx',
-      size: '1.2 MB',
-      uploadDate: '21 mayo 2024',
-      type: 'XLSX',
-      status: 'Listo'
+      id: 2,
+      name: "Manual de Usuario RAG.docx",
+      status: "vectorized",
+      uploadDate: "2024-12-14",
+      size: "1.8 MB",
+      type: "docx",
+      vectorCount: 892
     },
     {
-      id: '3',
-      filename: 'CFT.pdf',
-      size: '2.1 MB',
-      uploadDate: '20 mayo 2024',
-      type: 'PDF',
-      status: 'Listo'
+      id: 3,
+      name: "Análisis de Mercado 2025.pdf",
+      status: "processing",
+      uploadDate: "2024-12-14",
+      size: "5.1 MB",
+      type: "pdf",
+      vectorCount: 0
     },
     {
-      id: '4',
-      filename: 'Manual_Usuario.pdf',
-      size: '5.8 MB',
-      uploadDate: '19 mayo 2024',
-      type: 'PDF',
-      status: 'Listo'
+      id: 4,
+      name: "Presentación Ventas.pptx",
+      status: "vectorized",
+      uploadDate: "2024-12-13",
+      size: "4.2 MB",
+      type: "pptx",
+      vectorCount: 654
     },
     {
-      id: '5',
-      filename: 'Politicas_Empresa.docx',
-      size: '1.1 MB',
-      uploadDate: '18 mayo 2024',
-      type: 'DOCX',
-      status: 'Listo'
+      id: 5,
+      name: "Base de Datos Clientes.txt",
+      status: "vectorized",
+      uploadDate: "2024-12-12",
+      size: "892 KB",
+      type: "txt",
+      vectorCount: 1834
     },
     {
-      id: '6',
-      filename: 'Guia_Procesos.pdf',
-      size: '3.2 MB',
-      uploadDate: '17 mayo 2024',
-      type: 'PDF',
-      status: 'Listo'
+      id: 6,
+      name: "Documentación API.md",
+      status: "error",
+      uploadDate: "2024-12-11",
+      size: "156 KB",
+      type: "md",
+      vectorCount: 0
     }
   ])
+  const router = useRouter()
 
   useEffect(() => {
-    const isLoggedIn = localStorage.getItem('isLoggedIn')
-    const email = localStorage.getItem('userEmail')
-    
-    if (!isLoggedIn) {
-      router.push('/login')
-    } else {
-      setUserEmail(email || 'admin@test.com')
+    const updateTime = () => {
+      const now = new Date()
+      setCurrentTime(now.toLocaleString('es-ES', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      }))
     }
-  }, [router])
+    
+    updateTime()
+    const interval = setInterval(updateTime, 1000)
+    return () => clearInterval(interval)
+  }, [])
 
   const handleLogout = () => {
-    localStorage.removeItem('isLoggedIn')
     localStorage.removeItem('userEmail')
     router.push('/login')
   }
 
-  const getFileIcon = (type: string) => {
-    switch (type.toLowerCase()) {
-      case 'pdf':
-        return '📄'
-      case 'docx':
-      case 'doc':
-        return '📝'
-      case 'xlsx':
-      case 'xls':
-        return '📊'
-      case 'txt':
-        return '📃'
-      default:
-        return '📄'
+  const getStatusBadge = (status) => {
+    const styles = {
+      vectorized: {
+        background: 'rgba(16, 185, 129, 0.2)',
+        color: '#10b981',
+        border: '1px solid rgba(16, 185, 129, 0.3)'
+      },
+      processing: {
+        background: 'rgba(251, 191, 36, 0.2)',
+        color: '#fbbf24',
+        border: '1px solid rgba(251, 191, 36, 0.3)'
+      },
+      error: {
+        background: 'rgba(239, 68, 68, 0.2)',
+        color: '#ef4444',
+        border: '1px solid rgba(239, 68, 68, 0.3)'
+      }
     }
+
+    const statusText = {
+      vectorized: 'Vectorizado',
+      processing: 'Procesando',
+      error: 'Error'
+    }
+
+    return (
+      <span style={{
+        ...styles[status],
+        padding: '4px 12px',
+        borderRadius: '20px',
+        fontSize: '12px',
+        fontWeight: '600'
+      }}>
+        {statusText[status]}
+      </span>
+    )
   }
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'Listo':
-        return 'bg-green-100 text-green-800'
-      case 'Procesando':
-        return 'bg-yellow-100 text-yellow-800'
-      case 'Error':
-        return 'bg-red-100 text-red-800'
-      default:
-        return 'bg-gray-100 text-gray-800'
+  const getFileIcon = (type) => {
+    const icons = {
+      pdf: '📄',
+      docx: '📝',
+      txt: '📄',
+      pptx: '📊',
+      md: '📋'
     }
+    return icons[type] || '📄'
   }
 
-  const filteredDocuments = documents.filter(doc => 
-    doc.filename.toLowerCase().includes(searchTerm.toLowerCase()) &&
-    (statusFilter === 'Todos los estados' || doc.status === statusFilter)
-  )
+  const filteredDocuments = documents.filter(doc => {
+    const matchesSearch = doc.name.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesStatus = statusFilter === 'all' || doc.status === statusFilter
+    return matchesSearch && matchesStatus
+  })
+
+  const totalDocuments = documents.length
+  const vectorizedCount = documents.filter(doc => doc.status === 'vectorized').length
+  const processingCount = documents.filter(doc => doc.status === 'processing').length
+  const errorCount = documents.filter(doc => doc.status === 'error').length
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Top Navigation Bar */}
-      <nav className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex items-center">
-              <div className="flex items-center">
-                <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center mr-3">
-                  <span className="text-white text-sm">🇺🇸</span>
-                </div>
-                <span className="text-xl font-semibold text-blue-600">AI RAG Agent</span>
-                <span className="ml-3 text-sm text-gray-500">User: YES | Name: admin@test.com</span>
+    <div style={{ 
+      background: 'linear-gradient(135deg, #0f172a 0%, #581c87 50%, #0f172a 100%)', 
+      minHeight: '100vh',
+      color: 'white',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif'
+    }}>
+      {/* Header */}
+      <header style={{ 
+        background: 'rgba(255, 255, 255, 0.1)', 
+        backdropFilter: 'blur(20px)', 
+        borderBottom: '1px solid rgba(255, 255, 255, 0.2)',
+        padding: '20px 0'
+      }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <div style={{ 
+                width: '40px', 
+                height: '40px', 
+                background: 'linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)',
+                borderRadius: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '18px',
+                fontWeight: 'bold'
+              }}>
+                AI
               </div>
-            </div>
-
-            <div className="flex items-center space-x-8">
-              <Link href="/dashboard" className="text-gray-500 hover:text-gray-900 px-3 py-2 text-sm font-medium">
-                Dashboard
-              </Link>
-              <Link href="/chat" className="text-gray-500 hover:text-gray-900 px-3 py-2 text-sm font-medium">
-                Chat
-              </Link>
-              <Link href="/analytics" className="text-gray-500 hover:text-gray-900 px-3 py-2 text-sm font-medium">
-                Analytics
-              </Link>
-              <Link href="/upload" className="text-gray-500 hover:text-gray-900 px-3 py-2 text-sm font-medium">
-                Upload
-              </Link>
-              <Link href="/documents" className="text-gray-900 hover:text-blue-600 px-3 py-2 text-sm font-medium border-b-2 border-blue-600">
-                Documents
-              </Link>
-            </div>
-
-            <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-700">Hola, {userEmail}</span>
-              <button
-                onClick={handleLogout}
-                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded text-sm font-medium"
-              >
-                Logout
-              </button>
-            </div>
-          </div>
-        </div>
-      </nav>
-
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="px-4 py-6 sm:px-0">
-          {/* Breadcrumb */}
-          <div className="mb-6">
-            <Link href="/dashboard" className="text-blue-600 hover:text-blue-800 text-sm">
-              ← Volver al Dashboard
-            </Link>
-          </div>
-
-          {/* Page Header */}
-          <div className="mb-8 flex justify-between items-center">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 flex items-center">
-                <span className="text-green-600 mr-3">📑</span>
-                Gestión de Documentos
-              </h1>
-              <p className="mt-2 text-gray-600">Administra y consulta todos los documentos del sistema RAG</p>
-            </div>
-            <div className="flex space-x-3">
-              <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium">
-                🔄 Actualizar
-              </button>
-              <Link href="/upload" className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium">
-                📤 Subir Documentos
-              </Link>
-            </div>
-          </div>
-
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-              <div className="flex items-center">
-                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mr-4">
-                  <span className="text-blue-600 text-xl">📄</span>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Total Documentos</p>
-                  <p className="text-2xl font-bold text-gray-900">7</p>
-                </div>
-              </div>
-            </div>
-            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-              <div className="flex items-center">
-                <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mr-4">
-                  <span className="text-green-600 text-xl">✅</span>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Vectorizados</p>
-                  <p className="text-2xl font-bold text-gray-900">6</p>
-                </div>
-              </div>
-            </div>
-            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-              <div className="flex items-center">
-                <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center mr-4">
-                  <span className="text-yellow-600 text-xl">⏳</span>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Procesando</p>
-                  <p className="text-2xl font-bold text-gray-900">0</p>
-                </div>
-              </div>
-            </div>
-            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-              <div className="flex items-center">
-                <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center mr-4">
-                  <span className="text-red-600 text-xl">⬇️</span>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Descargas</p>
-                  <p className="text-2xl font-bold text-gray-900">0</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Filters and Search */}
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-6">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0 md:space-x-4">
-              <div className="flex-1">
-                <input
-                  type="text"
-                  placeholder="Buscar documentos por CFT, Excel, manual..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-              <div className="flex space-x-3">
-                <select 
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option>Todos los estados</option>
-                  <option>Listo</option>
-                  <option>Procesando</option>
-                  <option>Error</option>
-                </select>
-                <select 
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option>Fecha</option>
-                  <option>Nombre</option>
-                  <option>Tamaño</option>
-                  <option>Tipo</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
-          {/* Documents Table */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h3 className="text-lg font-medium text-gray-900">Documentos ({filteredDocuments.length})</h3>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Documento
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Tamaño
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Fecha
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Estado
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Acciones
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredDocuments.map((document) => (
-                    <tr key={document.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="flex-shrink-0 h-10 w-10">
-                            <div className="h-10 w-10 rounded-lg bg-blue-100 flex items-center justify-center">
-                              <span className="text-lg">{getFileIcon(document.type)}</span>
-                            </div>
-                          </div>
-                          <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">
-                              {document.filename}
-                            </div>
-                            <div className="text-sm text-gray-500">
-                              {document.type}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {document.size}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {document.uploadDate}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(document.status)}`}>
-                          {document.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <div className="flex space-x-2">
-                          <Link 
-                            href="/chat"
-                            className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
-                          >
-                            💬
-                          </Link>
-                          <button className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700">
-                            📊
-                          </button>
-                          <button className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-gray-600 hover:bg-gray-700">
-                            ⋮
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <h1 style={{ fontSize: '24px', fontWeight: 'bold' }}>Sistema RAG Avanzado</h1>
             </div>
             
-            {filteredDocuments.length === 0 && (
-              <div className="text-center py-12">
-                <div className="text-gray-400 text-4xl mb-4">📄</div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No se encontraron documentos</h3>
-                <p className="text-gray-600 mb-6">Ajusta los filtros de búsqueda o sube nuevos documentos.</p>
-                <Link 
-                  href="/upload"
-                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
-                >
-                  Subir Primer Documento
-                </Link>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+              <span style={{ fontSize: '14px', opacity: '0.8' }}>{currentTime}</span>
+              <button
+                onClick={handleLogout}
+                style={{
+                  background: 'rgba(239, 68, 68, 0.2)',
+                  border: '1px solid rgba(239, 68, 68, 0.3)',
+                  color: 'white',
+                  padding: '8px 16px',
+                  borderRadius: '8px',
+                  cursor: 'pointer'
+                }}
+              >
+                Cerrar Sesión
+              </button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Navigation */}
+      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 20px' }}>
+        <div style={{ padding: '20px 0', borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>
+          <Link href="/dashboard" style={{ color: 'rgba(255, 255, 255, 0.8)', textDecoration: 'none', padding: '8px 16px', borderRadius: '8px', marginRight: '12px' }}>Dashboard</Link>
+          <Link href="/chat" style={{ color: 'rgba(255, 255, 255, 0.8)', textDecoration: 'none', padding: '8px 16px', borderRadius: '8px', marginRight: '12px' }}>Chat</Link>
+          <Link href="/analytics" style={{ color: 'rgba(255, 255, 255, 0.8)', textDecoration: 'none', padding: '8px 16px', borderRadius: '8px', marginRight: '12px' }}>Analytics</Link>
+          <Link href="/upload" style={{ color: 'rgba(255, 255, 255, 0.8)', textDecoration: 'none', padding: '8px 16px', borderRadius: '8px', marginRight: '12px' }}>Upload</Link>
+          <Link href="/documents" style={{ background: 'rgba(139, 92, 246, 0.3)', color: 'white', textDecoration: 'none', padding: '8px 16px', borderRadius: '8px', marginRight: '12px' }}>Documents</Link>
+        </div>
+      </div>
+
+      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '40px 20px' }}>
+        
+        {/* Header Section */}
+        <div style={{ marginBottom: '40px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{ fontSize: '32px' }}>📋</div>
+              <h1 style={{ fontSize: '36px', fontWeight: 'bold' }}>Gestión de Documentos</h1>
+            </div>
+            <Link 
+              href="/upload" 
+              style={{
+                background: 'linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)',
+                color: 'white',
+                textDecoration: 'none',
+                padding: '12px 24px',
+                borderRadius: '12px',
+                fontWeight: '600'
+              }}
+            >
+              📄 Subir Documentos
+            </Link>
+          </div>
+          <p style={{ fontSize: '18px', opacity: '0.8' }}>
+            Administra y consulta todos los documentos del sistema RAG
+          </p>
+        </div>
+
+        {/* Stats Cards */}
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(4, 1fr)', 
+          gap: '20px', 
+          marginBottom: '40px' 
+        }}>
+          <div style={{
+            background: 'rgba(255, 255, 255, 0.1)',
+            backdropFilter: 'blur(20px)',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            borderRadius: '16px',
+            padding: '20px',
+            textAlign: 'center'
+          }}>
+            <div style={{ fontSize: '28px', fontWeight: 'bold', marginBottom: '4px', color: '#3b82f6' }}>{totalDocuments}</div>
+            <div style={{ fontSize: '14px', opacity: '0.8' }}>Total Documentos</div>
+          </div>
+          <div style={{
+            background: 'rgba(255, 255, 255, 0.1)',
+            backdropFilter: 'blur(20px)',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            borderRadius: '16px',
+            padding: '20px',
+            textAlign: 'center'
+          }}>
+            <div style={{ fontSize: '28px', fontWeight: 'bold', marginBottom: '4px', color: '#10b981' }}>{vectorizedCount}</div>
+            <div style={{ fontSize: '14px', opacity: '0.8' }}>Vectorizados</div>
+          </div>
+          <div style={{
+            background: 'rgba(255, 255, 255, 0.1)',
+            backdropFilter: 'blur(20px)',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            borderRadius: '16px',
+            padding: '20px',
+            textAlign: 'center'
+          }}>
+            <div style={{ fontSize: '28px', fontWeight: 'bold', marginBottom: '4px', color: '#fbbf24' }}>{processingCount}</div>
+            <div style={{ fontSize: '14px', opacity: '0.8' }}>Procesando</div>
+          </div>
+          <div style={{
+            background: 'rgba(255, 255, 255, 0.1)',
+            backdropFilter: 'blur(20px)',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            borderRadius: '16px',
+            padding: '20px',
+            textAlign: 'center'
+          }}>
+            <div style={{ fontSize: '28px', fontWeight: 'bold', marginBottom: '4px', color: '#ef4444' }}>{errorCount}</div>
+            <div style={{ fontSize: '14px', opacity: '0.8' }}>Con Errores</div>
+          </div>
+        </div>
+
+        {/* Filters */}
+        <div style={{ 
+          background: 'rgba(255, 255, 255, 0.1)', 
+          backdropFilter: 'blur(20px)', 
+          border: '1px solid rgba(255, 255, 255, 0.2)', 
+          borderRadius: '20px', 
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+          padding: '24px', 
+          marginBottom: '30px' 
+        }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '20px', alignItems: 'end' }}>
+            <div>
+              <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '600' }}>
+                Buscar documentos
+              </label>
+              <input
+                type="text"
+                placeholder="Buscar por nombre de archivo..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.1)',
+                  border: '1px solid rgba(255, 255, 255, 0.3)',
+                  borderRadius: '12px',
+                  padding: '12px 16px',
+                  color: 'white',
+                  width: '100%',
+                  fontSize: '16px'
+                }}
+              />
+            </div>
+            
+            <div>
+              <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '600' }}>
+                Estado
+              </label>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.1)',
+                  border: '1px solid rgba(255, 255, 255, 0.3)',
+                  borderRadius: '8px',
+                  padding: '8px 12px',
+                  color: 'white',
+                  fontSize: '14px',
+                  width: '100%'
+                }}
+              >
+                <option value="all">Todos los estados</option>
+                <option value="vectorized">Vectorizados</option>
+                <option value="processing">Procesando</option>
+                <option value="error">Con errores</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Documents List */}
+        <div style={{ 
+          background: 'rgba(255, 255, 255, 0.1)', 
+          backdropFilter: 'blur(20px)', 
+          border: '1px solid rgba(255, 255, 255, 0.2)', 
+          borderRadius: '20px', 
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+          padding: '30px'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+            <h2 style={{ fontSize: '24px', fontWeight: 'bold' }}>
+              Documentos ({filteredDocuments.length})
+            </h2>
+            <button style={{
+              background: 'rgba(255, 255, 255, 0.1)',
+              border: '1px solid rgba(255, 255, 255, 0.3)',
+              color: 'white',
+              padding: '8px 16px',
+              borderRadius: '8px',
+              cursor: 'pointer'
+            }}>
+              🔄 Actualizar
+            </button>
+          </div>
+          
+          <div>
+            {filteredDocuments.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px', opacity: '0.7' }}>
+                <div style={{ fontSize: '48px', marginBottom: '16px' }}>📄</div>
+                <p>No se encontraron documentos que coincidan con los filtros</p>
               </div>
+            ) : (
+              filteredDocuments.map((doc) => (
+                <div key={doc.id} style={{
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  borderRadius: '12px',
+                  padding: '16px',
+                  marginBottom: '12px',
+                  transition: 'all 0.3s ease'
+                }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '40px 2fr 1fr 1fr 1fr 120px', gap: '16px', alignItems: 'center' }}>
+                    <div style={{ fontSize: '24px' }}>{getFileIcon(doc.type)}</div>
+                    
+                    <div>
+                      <div style={{ fontWeight: '600', marginBottom: '4px' }}>{doc.name}</div>
+                      <div style={{ fontSize: '14px', opacity: '0.7' }}>{doc.size}</div>
+                    </div>
+                    
+                    <div>{getStatusBadge(doc.status)}</div>
+                    
+                    <div style={{ fontSize: '14px', opacity: '0.8' }}>
+                      {new Date(doc.uploadDate).toLocaleDateString('es-ES')}
+                    </div>
+                    
+                    <div style={{ fontSize: '14px', opacity: '0.8' }}>
+                      {doc.vectorCount > 0 ? `${doc.vectorCount.toLocaleString()} vectores` : '—'}
+                    </div>
+                    
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button 
+                        style={{
+                          background: 'rgba(255, 255, 255, 0.1)',
+                          border: '1px solid rgba(255, 255, 255, 0.3)',
+                          color: 'white',
+                          padding: '6px 12px',
+                          borderRadius: '8px',
+                          cursor: 'pointer',
+                          fontSize: '12px'
+                        }}
+                        title="Ver detalles"
+                      >
+                        👁️
+                      </button>
+                      <button 
+                        style={{
+                          background: 'rgba(255, 255, 255, 0.1)',
+                          border: '1px solid rgba(255, 255, 255, 0.3)',
+                          color: 'white',
+                          padding: '6px 12px',
+                          borderRadius: '8px',
+                          cursor: 'pointer',
+                          fontSize: '12px'
+                        }}
+                        title="Eliminar"
+                      >
+                        🗑️
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))
             )}
           </div>
-
-          {/* Pagination */}
-          {filteredDocuments.length > 0 && (
-            <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6 mt-6 rounded-lg border border-gray-200">
-              <div className="flex-1 flex justify-between sm:hidden">
-                <button className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-                  Anterior
-                </button>
-                <button className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-                  Siguiente
-                </button>
-              </div>
-              <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-sm text-gray-700">
-                    Mostrando <span className="font-medium">1</span> a <span className="font-medium">{filteredDocuments.length}</span> de{' '}
-                    <span className="font-medium">{filteredDocuments.length}</span> resultados
-                  </p>
-                </div>
-                <div>
-                  <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-                    <button className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
-                      <span className="sr-only">Anterior</span>
-                      ←
-                    </button>
-                    <button className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-blue-50 text-sm font-medium text-blue-600">
-                      1
-                    </button>
-                    <button className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
-                      <span className="sr-only">Siguiente</span>
-                      →
-                    </button>
-                  </nav>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
-      </main>
+      </div>
     </div>
   )
 }
