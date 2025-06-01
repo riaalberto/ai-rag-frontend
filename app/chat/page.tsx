@@ -52,7 +52,7 @@ export default function ChatPage() {
     setIsLoading(true)
 
     try {
-      const response = await fetch('https://ai-rag-auth-service-production.up.railway.app/api/chat', {
+      const response = await fetch('https://fastapi-service-production-4f6c.up.railway.app/api/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
