@@ -1,8 +1,18 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import Sidebar from '../components/Sidebar'
 
 export default function ChatPage() {
+  const router = useRouter()
+
+  useEffect(() => {
+    const isLoggedIn = localStorage.getItem('isLoggedIn')
+    if (!isLoggedIn) {
+      router.push('/login')
+    }
+  }, [router])
   const [messages, setMessages] = useState<Array<{id: string, text: string, isUser: boolean}>>([])
   const [inputMessage, setInputMessage] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -78,18 +88,22 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-4xl mx-auto px-4 py-4">
-          <h1 className="text-2xl font-bold text-gray-900">🤖 AI RAG Assistant</h1>
-          <p className="text-gray-600">Chat inteligente con análisis de documentos Excel</p>
+    <div className="flex min-h-screen bg-gray-50">
+      <Sidebar />
+      
+      <div className="flex-1 flex flex-col">
+        {/* Header */}
+        <div className="bg-white border-b border-gray-200">
+          <div className="px-6 py-4">
+            <h1 className="text-2xl font-bold text-gray-900">Chat</h1>
+            <p className="text-gray-600">Haz preguntas sobre tus documentos</p>
+          </div>
         </div>
-      </header>
 
-      {/* Chat Container */}
-      <div className="flex-1 max-w-4xl mx-auto w-full px-4 py-6">
-        <div className="bg-white rounded-lg shadow-sm border h-96 flex flex-col">
+        {/* Chat Container */}
+        <div className="flex-1 p-6">
+          <div className="max-w-4xl mx-auto h-full">
+            <div className="bg-white border border-gray-200 rounded-lg h-full flex flex-col">
           
           {/* Messages Area */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -132,38 +146,10 @@ export default function ChatPage() {
                 </div>
               </div>
             )}
-          </div>
-
-          {/* Input Area */}
-          <div className="border-t p-4">
-            <div className="flex space-x-2">
-              <input
-                type="text"
-                value={inputMessage}
-                onChange={(e) => setInputMessage(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="Escribe tu mensaje..."
-                className="flex-1 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                disabled={isLoading}
-              />
-              <button
-                onClick={sendMessage}
-                disabled={isLoading || !inputMessage.trim()}
-                className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isLoading ? '...' : 'Enviar'}
-              </button>
-            </div>
+                      </div>
           </div>
         </div>
       </div>
-
-      {/* Footer */}
-      <footer className="bg-white border-t py-4">
-        <div className="max-w-4xl mx-auto px-4 text-center text-sm text-gray-500">
-          🚀 Sistema RAG con Arquitectura Modular • Análisis Inteligente de Excel
-        </div>
-      </footer>
     </div>
   )
 }
