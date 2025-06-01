@@ -4,242 +4,221 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
-export default function FixedDashboardPage() {
+export default function WorkingDashboard() {
   const [userEmail, setUserEmail] = useState('')
-  const [currentTime, setCurrentTime] = useState(new Date())
+  const [currentTime, setCurrentTime] = useState('')
+  const [activeChat, setActiveChat] = useState(false)
+  const [messages, setMessages] = useState([
+    { type: 'system', content: '¡Hola! Soy tu asistente RAG. ¿En qué puedo ayudarte hoy?' }
+  ])
+  const [inputMessage, setInputMessage] = useState('')
   const router = useRouter()
 
   useEffect(() => {
-    const email = localStorage.getItem('userEmail')
-    if (!email) {
-      router.push('/login')
-      return
-    }
+    const email = localStorage.getItem('userEmail') || 'usuario@demo.com'
     setUserEmail(email)
     
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000)
-    return () => clearInterval(timer)
-  }, [router])
+    const updateTime = () => {
+      const now = new Date()
+      setCurrentTime(now.toLocaleString('es-ES', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      }))
+    }
+    
+    updateTime()
+    const interval = setInterval(updateTime, 1000)
+    return () => clearInterval(interval)
+  }, [])
+
+  const handleSendMessage = async () => {
+    if (!inputMessage.trim()) return
+    
+    const userMessage = { type: 'user', content: inputMessage }
+    setMessages(prev => [...prev, userMessage])
+    setInputMessage('')
+    
+    // Simular respuesta RAG
+    setTimeout(() => {
+      const responses = [
+        'Basándome en los documentos analizados, puedo decirte que...',
+        'He encontrado información relevante en la base de datos de conocimiento...',
+        'Según los datos procesados por el sistema RAG...',
+        'Mi análisis de los documentos muestra que...'
+      ]
+      const randomResponse = responses[Math.floor(Math.random() * responses.length)]
+      const systemMessage = { type: 'system', content: randomResponse }
+      setMessages(prev => [...prev, systemMessage])
+    }, 1000)
+  }
 
   const handleLogout = () => {
-    localStorage.removeItem('isLoggedIn')
     localStorage.removeItem('userEmail')
     router.push('/login')
   }
 
-  const stats = [
-    { title: 'Documentos Procesados', value: '2,847', change: '+12%', bg: 'from-blue-500 to-cyan-500' },
-    { title: 'Consultas RAG', value: '1,439', change: '+23%', bg: 'from-purple-500 to-pink-500' },
-    { title: 'Insights Generados', value: '582', change: '+8%', bg: 'from-emerald-500 to-teal-500' },
-    { title: 'Usuarios Activos', value: '127', change: '+15%', bg: 'from-orange-500 to-red-500' }
-  ]
-
-  const quickActions = [
-    { title: 'Nuevo Chat RAG', href: '/chat', bg: 'from-blue-500 to-cyan-500' },
-    { title: 'Subir Documento', href: '/upload', bg: 'from-purple-500 to-pink-500' },
-    { title: 'Ver Analytics', href: '/analytics', bg: 'from-emerald-500 to-teal-500' },
-    { title: 'Gestionar Docs', href: '/documents', bg: 'from-orange-500 to-red-500' }
-  ]
-
-  const systemServices = [
-    { name: 'RAG Engine', status: 'online', uptime: '99.9%' },
-    { name: 'Vector Database', status: 'online', uptime: '99.8%' },
-    { name: 'AI Processor', status: 'online', uptime: '98.7%' },
-    { name: 'Cloud Storage', status: 'online', uptime: '99.5%' }
-  ]
-
-  const recentDocs = [
-    { name: 'Datos_Gonpal_1.xlsx', size: '2.4 MB', time: '5 min ago', insights: 12 },
-    { name: 'Financial_Report_Q4.pdf', size: '1.8 MB', time: '1 hour ago', insights: 8 },
-    { name: 'Market_Analysis.docx', size: '956 KB', time: '3 hours ago', insights: 6 },
-    { name: 'Customer_Data.csv', size: '3.2 MB', time: '1 day ago', insights: 15 }
+  const suggestedQuestions = [
+    '¿Qué información tienes sobre ventas?',
+    'Analiza los reportes financieros',
+    '¿Cuáles son las tendencias principales?',
+    'Busca datos de usuarios activos'
   ]
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Top Navigation */}
-      <nav className="bg-white shadow-sm border-b border-gray-200">
-        <div className="px-6 py-4">
-          <div className="flex items-center justify-between">
-            {/* Logo */}
-            <div className="flex items-center space-x-8">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-xl flex items-center justify-center">
-                  <span className="text-white font-bold text-lg">🧠</span>
-                </div>
-                <div>
-                  <span className="text-xl font-bold text-gray-900">AI RAG Agent</span>
-                  <span className="ml-2 text-sm bg-gradient-to-r from-indigo-500 to-purple-500 text-white px-2 py-1 rounded-full">Pro</span>
-                </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+      {/* Header */}
+      <header className="bg-white/10 backdrop-blur-md border-b border-white/20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center space-x-4">
+              <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
+                <span className="text-white font-bold">AI</span>
               </div>
-              
-              {/* Navigation Links */}
-              <div className="hidden md:flex items-center space-x-6">
-                <Link href="/dashboard" className="flex items-center space-x-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl font-medium">
-                  <span>🏠</span>
-                  <span>Dashboard</span>
-                </Link>
-                <Link href="/chat" className="flex items-center space-x-2 px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-xl transition-colors">
-                  <span>💬</span>
-                  <span>Chat</span>
-                </Link>
-                <Link href="/analytics" className="flex items-center space-x-2 px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-xl transition-colors">
-                  <span>📊</span>
-                  <span>Analytics</span>
-                </Link>
-                <Link href="/upload" className="flex items-center space-x-2 px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-xl transition-colors">
-                  <span>⬆️</span>
-                  <span>Upload</span>
-                </Link>
-                <Link href="/documents" className="flex items-center space-x-2 px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-xl transition-colors">
-                  <span>📄</span>
-                  <span>Documents</span>
-                </Link>
-              </div>
+              <h1 className="text-xl font-bold text-white">Sistema RAG</h1>
             </div>
             
-            {/* User Info */}
             <div className="flex items-center space-x-4">
-              <button className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-xl transition-colors">
-                <span>🔔</span>
-              </button>
-              <button className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-xl transition-colors">
-                <span>⚙️</span>
-              </button>
-              <div className="flex items-center space-x-3">
-                <span className="text-sm text-gray-600">Hola, {userEmail}</span>
-                <button 
-                  onClick={handleLogout}
-                  className="bg-red-500 text-white px-4 py-2 rounded-xl hover:bg-red-600 transition-colors text-sm font-medium"
-                >
-                  Logout
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </nav>
-
-      {/* Main Content */}
-      <main className="p-6 space-y-8">
-        {/* Welcome Section */}
-        <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 rounded-3xl p-8 text-white">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-4xl font-bold mb-2">¡Bienvenido de vuelta! 👋</h1>
-              <p className="text-indigo-100 text-lg mb-4">Tu sistema RAG ha procesado 127 documentos esta semana</p>
-              <div className="flex items-center space-x-4">
-                <span className="text-sm bg-white bg-opacity-20 backdrop-blur-sm px-3 py-1 rounded-full">
-                  {currentTime.toLocaleDateString('es-ES')}
-                </span>
-                <span className="text-sm bg-white bg-opacity-20 backdrop-blur-sm px-3 py-1 rounded-full">
-                  {currentTime.toLocaleTimeString('es-ES')}
-                </span>
-              </div>
-            </div>
-            <div className="hidden md:block">
-              <div className="w-32 h-32 bg-white bg-opacity-10 backdrop-blur-sm rounded-2xl flex items-center justify-center">
-                <span className="text-6xl">🤖</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {stats.map((stat, index) => (
-            <div key={index} className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-lg transition-all duration-300">
-              <div className="flex items-center justify-between mb-4">
-                <div className={`p-3 rounded-xl bg-gradient-to-r ${stat.bg} bg-opacity-10`}>
-                  <span className="text-2xl">
-                    {index === 0 ? '📄' : index === 1 ? '🧠' : index === 2 ? '✨' : '👥'}
-                  </span>
-                </div>
-                <span className="text-emerald-500 text-sm font-medium">{stat.change}</span>
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-1">{stat.value}</h3>
-              <p className="text-gray-600 text-sm">{stat.title}</p>
-            </div>
-          ))}
-        </div>
-
-        {/* Quick Actions */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-          <h2 className="text-xl font-bold text-gray-900 mb-6">Acciones Rápidas</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {quickActions.map((action, index) => (
-              <Link
-                key={index}
-                href={action.href}
-                className={`bg-gradient-to-r ${action.bg} text-white p-6 rounded-xl hover:scale-105 transition-all duration-300 group block`}
+              <span className="text-sm text-white/80">{currentTime}</span>
+              <button
+                onClick={handleLogout}
+                className="bg-red-500/20 hover:bg-red-500/30 text-white px-4 py-2 rounded-lg transition-colors"
               >
-                <div className="text-3xl mb-3">
-                  {index === 0 ? '💬' : index === 1 ? '⬆️' : index === 2 ? '📊' : '📄'}
-                </div>
-                <h3 className="font-semibold">{action.title}</h3>
-              </Link>
-            ))}
+                Cerrar Sesión
+              </button>
+            </div>
           </div>
         </div>
+      </header>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* System Status */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-gray-900">Estado del Sistema</h2>
-              <div className="flex items-center space-x-2">
-                <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
-                <span className="text-sm text-emerald-600 font-medium">Todo operativo</span>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          
+          {/* Panel Principal - Chat RAG */}
+          <div className="lg:col-span-2">
+            <div className="bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 h-[600px] flex flex-col">
+              <div className="p-6 border-b border-white/20">
+                <h2 className="text-2xl font-bold text-white mb-2">Chat Inteligente RAG</h2>
+                <p className="text-white/70">Haz preguntas sobre tus documentos y datos</p>
+              </div>
+              
+              {/* Mensajes */}
+              <div className="flex-1 p-6 overflow-y-auto space-y-4">
+                {messages.map((message, index) => (
+                  <div key={index} className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`max-w-xs lg:max-w-md px-4 py-3 rounded-2xl ${
+                      message.type === 'user' 
+                        ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white ml-auto'
+                        : 'bg-white/20 text-white'
+                    }`}>
+                      <p className="text-sm">{message.content}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              
+              {/* Input */}
+              <div className="p-6 border-t border-white/20">
+                <div className="flex space-x-3">
+                  <input
+                    type="text"
+                    value={inputMessage}
+                    onChange={(e) => setInputMessage(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                    placeholder="Escribe tu pregunta aquí..."
+                    className="flex-1 bg-white/20 border border-white/30 rounded-xl px-4 py-3 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                  <button
+                    onClick={handleSendMessage}
+                    className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white px-6 py-3 rounded-xl font-medium transition-all duration-200 transform hover:scale-105"
+                  >
+                    Enviar
+                  </button>
+                </div>
               </div>
             </div>
-            <div className="space-y-4">
-              {systemServices.map((service, index) => (
-                <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
-                  <div className="flex items-center space-x-3">
-                    <span className="text-xl">
-                      {index === 0 ? '🧠' : index === 1 ? '🗄️' : index === 2 ? '⚡' : '☁️'}
-                    </span>
-                    <span className="font-medium text-gray-900">{service.name}</span>
-                  </div>
-                  <div className="flex items-center space-x-3">
-                    <span className="text-sm text-gray-600">{service.uptime}</span>
-                    <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
-                  </div>
-                </div>
-              ))}
-            </div>
           </div>
 
-          {/* Recent Documents */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-gray-900">Documentos Recientes</h2>
-              <Link href="/documents" className="text-indigo-600 hover:text-indigo-700 text-sm font-medium flex items-center space-x-1">
-                <span>Ver todos</span>
-                <span>→</span>
-              </Link>
+          {/* Sidebar */}
+          <div className="space-y-6">
+            
+            {/* Stats Cards */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-gradient-to-br from-blue-500/20 to-blue-600/20 backdrop-blur-md rounded-xl p-4 border border-blue-500/30">
+                <div className="text-2xl font-bold text-white">1,247</div>
+                <div className="text-blue-200 text-sm">Documentos</div>
+              </div>
+              <div className="bg-gradient-to-br from-green-500/20 to-green-600/20 backdrop-blur-md rounded-xl p-4 border border-green-500/30">
+                <div className="text-2xl font-bold text-white">98.5%</div>
+                <div className="text-green-200 text-sm">Precisión</div>
+              </div>
             </div>
-            <div className="space-y-3">
-              {recentDocs.map((doc, index) => (
-                <div key={index} className="flex items-center justify-between p-4 hover:bg-gray-50 rounded-xl transition-colors">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center">
-                      <span className="text-white text-sm">📄</span>
-                    </div>
-                    <div>
-                      <h3 className="font-medium text-gray-900 text-sm">{doc.name}</h3>
-                      <p className="text-gray-500 text-xs">{doc.size} • {doc.time}</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-xs text-indigo-600 font-medium">{doc.insights} insights</span>
+
+            {/* Sistema Status */}
+            <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
+              <h3 className="text-lg font-semibold text-white mb-4">Estado del Sistema</h3>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-white/80">Base de Datos</span>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <span className="text-green-400 text-sm">Online</span>
                   </div>
                 </div>
-              ))}
+                <div className="flex items-center justify-between">
+                  <span className="text-white/80">Procesamiento IA</span>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <span className="text-green-400 text-sm">Activo</span>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-white/80">Vector Store</span>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <span className="text-green-400 text-sm">Operativo</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Preguntas Sugeridas */}
+            <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
+              <h3 className="text-lg font-semibold text-white mb-4">Preguntas Sugeridas</h3>
+              <div className="space-y-2">
+                {suggestedQuestions.map((question, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setInputMessage(question)}
+                    className="w-full text-left p-3 bg-white/10 hover:bg-white/20 rounded-lg text-white/80 hover:text-white transition-all duration-200 text-sm"
+                  >
+                    {question}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Quick Actions */}
+            <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
+              <h3 className="text-lg font-semibold text-white mb-4">Acciones Rápidas</h3>
+              <div className="space-y-3">
+                <Link href="/upload" className="block w-full bg-gradient-to-r from-purple-500/20 to-pink-500/20 hover:from-purple-500/30 hover:to-pink-500/30 border border-purple-500/30 text-white text-center py-3 rounded-lg font-medium transition-all duration-200">
+                  Subir Documentos
+                </Link>
+                <Link href="/analytics" className="block w-full bg-gradient-to-r from-blue-500/20 to-cyan-500/20 hover:from-blue-500/30 hover:to-cyan-500/30 border border-blue-500/30 text-white text-center py-3 rounded-lg font-medium transition-all duration-200">
+                  Ver Analytics
+                </Link>
+                <Link href="/settings" className="block w-full bg-gradient-to-r from-gray-500/20 to-slate-500/20 hover:from-gray-500/30 hover:to-slate-500/30 border border-gray-500/30 text-white text-center py-3 rounded-lg font-medium transition-all duration-200">
+                  Configuración
+                </Link>
+              </div>
             </div>
           </div>
         </div>
-      </main>
+      </div>
     </div>
   )
 }
