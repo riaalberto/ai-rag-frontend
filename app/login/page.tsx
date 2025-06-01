@@ -2,230 +2,425 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Brain, Mail, Lock, Eye, EyeOff, Sparkles, Shield, Zap, ArrowRight } from 'lucide-react'
+import Link from 'next/link'
 
 export default function ModernLoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState('')
   const router = useRouter()
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
-    setError('')
 
-    // Simulación de login
+    // Simular autenticación
     setTimeout(() => {
-      if (email === 'admin@test.com' && password === 'admin123') {
-        localStorage.setItem('isLoggedIn', 'true')
-        localStorage.setItem('userEmail', email)
-        router.push('/dashboard')
-      } else {
-        setError('Credenciales incorrectas')
-      }
+      localStorage.setItem('isLoggedIn', 'true')
+      localStorage.setItem('userEmail', email || 'admin@test.com')
       setIsLoading(false)
+      router.push('/dashboard')
     }, 1500)
   }
 
-  const features = [
-    {
-      icon: Brain,
-      title: 'Análisis Inteligente',
-      description: 'IA avanzada para extraer insights de tus documentos'
-    },
-    {
-      icon: Shield,
-      title: 'Seguro y Confiable',
-      description: 'Máxima seguridad para tus datos empresariales'
-    },
-    {
-      icon: Zap,
-      title: 'Procesamiento Rápido',
-      description: 'Resultados instantáneos con arquitectura optimizada'
-    }
+  const demoCredentials = [
+    { email: 'admin@test.com', password: 'admin123' },
+    { email: 'demo@empresa.com', password: 'demo123' },
+    { email: 'usuario@rag.ai', password: 'rag2024' }
   ]
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex">
-      {/* Left Panel - Features */}
-      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600">
-        <div className="absolute inset-0 bg-black/20"></div>
-        <div className="relative z-10 flex flex-col justify-center px-12 text-white">
-          <div className="mb-8">
-            <div className="flex items-center space-x-3 mb-6">
-              <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center">
-                <Brain className="w-7 h-7 text-white" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold">AI RAG Agent</h1>
-                <p className="text-indigo-100 text-sm">Sistema Inteligente de Análisis</p>
-              </div>
-            </div>
-            
-            <h2 className="text-4xl font-bold mb-4 leading-tight">
-              Transforma tus documentos en 
-              <span className="block text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-pink-300">
-                insights inteligentes
-              </span>
-            </h2>
-            <p className="text-xl text-indigo-100 mb-8">
-              Plataforma empresarial de análisis con IA que procesa documentos y genera respuestas precisas sobre tus datos.
-            </p>
-          </div>
+  const fillDemo = (credentials: { email: string; password: string }) => {
+    setEmail(credentials.email)
+    setPassword(credentials.password)
+  }
 
-          <div className="space-y-6">
-            {features.map((feature, index) => {
-              const Icon = feature.icon
-              return (
-                <div key={index} className="flex items-start space-x-4">
-                  <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center flex-shrink-0">
-                    <Icon className="w-5 h-5 text-white" />
+  return (
+    <>
+      <style jsx global>{`
+        * {
+          margin: 0;
+          padding: 0;
+          box-sizing: border-box;
+        }
+        
+        body {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+          background: linear-gradient(135deg, #0f172a 0%, #581c87 50%, #0f172a 100%);
+          min-height: 100vh;
+          color: white;
+        }
+        
+        .glass-card {
+          background: rgba(255, 255, 255, 0.1);
+          backdrop-filter: blur(20px);
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          border-radius: 20px;
+          box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+        
+        .input-field {
+          background: rgba(255, 255, 255, 0.1);
+          border: 1px solid rgba(255, 255, 255, 0.3);
+          border-radius: 12px;
+          padding: 16px 20px;
+          color: white;
+          width: 100%;
+          font-size: 16px;
+          transition: all 0.3s ease;
+        }
+        
+        .input-field::placeholder {
+          color: rgba(255, 255, 255, 0.6);
+        }
+        
+        .input-field:focus {
+          outline: none;
+          border-color: #8b5cf6;
+          box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2);
+          background: rgba(255, 255, 255, 0.15);
+        }
+        
+        .btn-primary {
+          background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%);
+          border: none;
+          color: white;
+          padding: 16px 24px;
+          border-radius: 12px;
+          font-weight: 600;
+          font-size: 16px;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          transform: translateY(0);
+          width: 100%;
+        }
+        
+        .btn-primary:hover:not(:disabled) {
+          transform: translateY(-2px);
+          box-shadow: 0 10px 25px rgba(139, 92, 246, 0.4);
+        }
+        
+        .btn-primary:disabled {
+          opacity: 0.7;
+          cursor: not-allowed;
+        }
+        
+        .btn-secondary {
+          background: rgba(255, 255, 255, 0.1);
+          border: 1px solid rgba(255, 255, 255, 0.3);
+          color: white;
+          padding: 8px 16px;
+          border-radius: 8px;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          text-decoration: none;
+          display: inline-block;
+          font-size: 14px;
+        }
+        
+        .btn-secondary:hover {
+          background: rgba(255, 255, 255, 0.2);
+          border-color: rgba(255, 255, 255, 0.5);
+        }
+        
+        .demo-btn {
+          background: rgba(59, 130, 246, 0.2);
+          border: 1px solid rgba(59, 130, 246, 0.4);
+          color: white;
+          padding: 8px 12px;
+          border-radius: 8px;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          font-size: 12px;
+          margin-bottom: 8px;
+          width: 100%;
+          text-align: left;
+        }
+        
+        .demo-btn:hover {
+          background: rgba(59, 130, 246, 0.3);
+          border-color: rgba(59, 130, 246, 0.6);
+        }
+        
+        .feature-item {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          padding: 20px;
+          background: rgba(255, 255, 255, 0.05);
+          border-radius: 16px;
+          margin-bottom: 16px;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          transition: all 0.3s ease;
+        }
+        
+        .feature-item:hover {
+          background: rgba(255, 255, 255, 0.1);
+          border-color: rgba(139, 92, 246, 0.3);
+        }
+        
+        .floating-element {
+          animation: float 6s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-20px); }
+        }
+        
+        .loading-spinner {
+          animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        
+        @media (max-width: 768px) {
+          .login-grid {
+            grid-template-columns: 1fr !important;
+          }
+          
+          .features-panel {
+            display: none;
+          }
+        }
+      `}</style>
+
+      <div style={{ background: 'linear-gradient(135deg, #0f172a 0%, #581c87 50%, #0f172a 100%)', minHeight: '100vh' }}>
+        
+        {/* Header */}
+        <header style={{ padding: '20px 0', background: 'rgba(255, 255, 255, 0.1)', backdropFilter: 'blur(20px)', borderBottom: '1px solid rgba(255, 255, 255, 0.2)' }}>
+          <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: '16px', textDecoration: 'none', color: 'white' }}>
+                <div style={{ 
+                  width: '48px', 
+                  height: '48px', 
+                  background: 'linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)',
+                  borderRadius: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '20px',
+                  fontWeight: 'bold'
+                }}>
+                  AI
+                </div>
+                <div>
+                  <h1 style={{ fontSize: '24px', fontWeight: 'bold' }}>AI RAG Agent</h1>
+                  <p style={{ fontSize: '14px', opacity: '0.8' }}>Sistema Inteligente de Análisis</p>
+                </div>
+              </Link>
+              
+              <Link href="/" className="btn-secondary">
+                ← Volver al Inicio
+              </Link>
+            </div>
+          </div>
+        </header>
+
+        <div style={{ padding: '60px 20px', maxWidth: '1200px', margin: '0 auto' }}>
+          <div className="login-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '60px', alignItems: 'center' }}>
+            
+            {/* Features Panel */}
+            <div className="features-panel">
+              <div style={{ marginBottom: '40px' }}>
+                <h2 style={{ 
+                  fontSize: '36px', 
+                  fontWeight: 'bold', 
+                  marginBottom: '16px',
+                  background: 'linear-gradient(135deg, #ffffff 0%, #8b5cf6 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent'
+                }}>
+                  Bienvenido de Vuelta
+                </h2>
+                <p style={{ fontSize: '18px', opacity: '0.8' }}>
+                  Accede a tu sistema RAG inteligente y continúa transformando documentos en insights valiosos.
+                </p>
+              </div>
+
+              <div>
+                <div className="feature-item">
+                  <div style={{ 
+                    width: '48px', 
+                    height: '48px', 
+                    background: 'linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)',
+                    borderRadius: '12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '20px'
+                  }}>
+                    🧠
                   </div>
                   <div>
-                    <h3 className="font-semibold text-lg mb-1">{feature.title}</h3>
-                    <p className="text-indigo-100 text-sm">{feature.description}</p>
+                    <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '4px' }}>Análisis Inteligente</h3>
+                    <p style={{ fontSize: '14px', opacity: '0.8' }}>IA avanzada para extraer insights de tus documentos</p>
                   </div>
                 </div>
-              )
-            })}
-          </div>
 
-          <div className="mt-12 p-6 bg-white/10 backdrop-blur-sm rounded-2xl">
-            <div className="flex items-center space-x-3 mb-2">
-              <Sparkles className="w-5 h-5 text-yellow-300" />
-              <span className="font-semibold">¿Sabías que?</span>
-            </div>
-            <p className="text-sm text-indigo-100">
-              Nuestro sistema procesa más de <strong>10,000 documentos</strong> al día y genera insights en tiempo real con 99.8% de precisión.
-            </p>
-          </div>
-        </div>
+                <div className="feature-item">
+                  <div style={{ 
+                    width: '48px', 
+                    height: '48px', 
+                    background: 'linear-gradient(135deg, #10b981 0%, #34d399 100%)',
+                    borderRadius: '12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '20px'
+                  }}>
+                    🔒
+                  </div>
+                  <div>
+                    <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '4px' }}>Seguro y Confiable</h3>
+                    <p style={{ fontSize: '14px', opacity: '0.8' }}>Máxima seguridad para tus datos empresariales</p>
+                  </div>
+                </div>
 
-        {/* Animated Background Elements */}
-        <div className="absolute top-20 left-20 w-32 h-32 bg-white/10 rounded-full blur-xl animate-pulse"></div>
-        <div className="absolute bottom-32 right-16 w-24 h-24 bg-pink-300/20 rounded-full blur-xl animate-pulse delay-1000"></div>
-        <div className="absolute top-1/2 right-32 w-16 h-16 bg-yellow-300/20 rounded-full blur-xl animate-pulse delay-500"></div>
-      </div>
-
-      {/* Right Panel - Login Form */}
-      <div className="flex-1 flex items-center justify-center p-8">
-        <div className="w-full max-w-md">
-          {/* Mobile Header */}
-          <div className="lg:hidden mb-8 text-center">
-            <div className="w-16 h-16 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <Brain className="w-8 h-8 text-white" />
-            </div>
-            <h1 className="text-2xl font-bold text-gray-900">AI RAG Agent</h1>
-            <p className="text-gray-600">Inicia sesión en tu cuenta</p>
-          </div>
-
-          {/* Login Form */}
-          <div className="bg-white rounded-3xl shadow-xl border border-gray-100 p-8">
-            <div className="text-center mb-8">
-              <h2 className="text-3xl font-bold text-gray-900 mb-2">Bienvenido</h2>
-              <p className="text-gray-600">Accede a tu sistema RAG inteligente</p>
-            </div>
-
-            {error && (
-              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl">
-                <p className="text-red-700 text-sm font-medium">{error}</p>
-              </div>
-            )}
-
-            <form onSubmit={handleLogin} className="space-y-6">
-              <div>
-                <label htmlFor="email" className="block text-sm font-semibold text-gray-700 mb-2">
-                  Correo Electrónico
-                </label>
-                <div className="relative">
-                  <Mail className="w-5 h-5 text-gray-400 absolute left-4 top-1/2 transform -translate-y-1/2" />
-                  <input
-                    id="email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full pl-12 pr-4 py-4 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
-                    placeholder="admin@test.com"
-                    required
-                  />
+                <div className="feature-item">
+                  <div style={{ 
+                    width: '48px', 
+                    height: '48px', 
+                    background: 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)',
+                    borderRadius: '12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '20px'
+                  }}>
+                    ⚡
+                  </div>
+                  <div>
+                    <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '4px' }}>Procesamiento Rápido</h3>
+                    <p style={{ fontSize: '14px', opacity: '0.8' }}>Resultados instantáneos con arquitectura optimizada</p>
+                  </div>
                 </div>
               </div>
 
-              <div>
-                <label htmlFor="password" className="block text-sm font-semibold text-gray-700 mb-2">
-                  Contraseña
-                </label>
-                <div className="relative">
-                  <Lock className="w-5 h-5 text-gray-400 absolute left-4 top-1/2 transform -translate-y-1/2" />
-                  <input
-                    id="password"
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full pl-12 pr-12 py-4 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
-                    placeholder="admin123"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  >
-                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              <div style={{ marginTop: '40px', padding: '20px', background: 'rgba(139, 92, 246, 0.1)', borderRadius: '16px', border: '1px solid rgba(139, 92, 246, 0.3)' }}>
+                <h4 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '8px' }}>💡 ¿Sabías que?</h4>
+                <p style={{ fontSize: '14px', opacity: '0.9', lineHeight: '1.5' }}>
+                  Nuestro sistema procesa más de <strong>10,000 documentos</strong> al día y genera insights en tiempo real con <strong>99.8% de precisión</strong>.
+                </p>
+              </div>
+            </div>
+
+            {/* Login Form */}
+            <div>
+              <div className="glass-card" style={{ padding: '40px' }}>
+                <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+                  <div className="floating-element" style={{ 
+                    width: '80px', 
+                    height: '80px', 
+                    background: 'linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)',
+                    borderRadius: '20px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '32px',
+                    margin: '0 auto 20px'
+                  }}>
+                    AI
+                  </div>
+                  <h2 style={{ fontSize: '28px', fontWeight: 'bold', marginBottom: '8px' }}>Iniciar Sesión</h2>
+                  <p style={{ opacity: '0.8' }}>Accede a tu cuenta para continuar</p>
+                </div>
+
+                <form onSubmit={handleSubmit} style={{ marginBottom: '24px' }}>
+                  <div style={{ marginBottom: '20px' }}>
+                    <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '600' }}>
+                      Correo Electrónico
+                    </label>
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="tu@email.com"
+                      className="input-field"
+                      required
+                    />
+                  </div>
+
+                  <div style={{ marginBottom: '24px' }}>
+                    <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '600' }}>
+                      Contraseña
+                    </label>
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="Tu contraseña"
+                        className="input-field"
+                        style={{ paddingRight: '50px' }}
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        style={{
+                          position: 'absolute',
+                          right: '16px',
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          background: 'none',
+                          border: 'none',
+                          color: 'rgba(255, 255, 255, 0.6)',
+                          cursor: 'pointer',
+                          fontSize: '18px'
+                        }}
+                      >
+                        {showPassword ? '👁️' : '👁️‍🗨️'}
+                      </button>
+                    </div>
+                  </div>
+
+                  <button type="submit" className="btn-primary" disabled={isLoading}>
+                    {isLoading ? (
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
+                        <div className="loading-spinner" style={{
+                          width: '20px',
+                          height: '20px',
+                          border: '2px solid rgba(255, 255, 255, 0.3)',
+                          borderTop: '2px solid white',
+                          borderRadius: '50%'
+                        }}></div>
+                        Iniciando sesión...
+                      </div>
+                    ) : (
+                      '🚀 Ingresar al Sistema'
+                    )}
                   </button>
+                </form>
+
+                {/* Demo Credentials */}
+                <div style={{ padding: '20px', background: 'rgba(59, 130, 246, 0.1)', borderRadius: '12px', border: '1px solid rgba(59, 130, 246, 0.3)' }}>
+                  <h4 style={{ fontSize: '14px', fontWeight: '600', marginBottom: '12px', color: '#60a5fa' }}>
+                    🔑 Credenciales de Prueba
+                  </h4>
+                  {demoCredentials.map((cred, index) => (
+                    <button
+                      key={index}
+                      type="button"
+                      onClick={() => fillDemo(cred)}
+                      className="demo-btn"
+                    >
+                      {cred.email} / {cred.password}
+                    </button>
+                  ))}
+                  <p style={{ fontSize: '12px', opacity: '0.8', marginTop: '8px' }}>
+                    Haz clic en cualquier credencial para autocompletar
+                  </p>
                 </div>
               </div>
-
-              <div className="flex items-center justify-between">
-                <label className="flex items-center">
-                  <input type="checkbox" className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500" />
-                  <span className="ml-2 text-sm text-gray-600">Recordarme</span>
-                </label>
-                <button type="button" className="text-sm text-indigo-600 hover:text-indigo-700 font-medium">
-                  ¿Olvidaste tu contraseña?
-                </button>
-              </div>
-
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="w-full bg-gradient-to-r from-indigo-500 to-purple-500 text-white py-4 rounded-xl font-semibold hover:from-indigo-600 hover:to-purple-600 transition-all duration-200 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isLoading ? (
-                  <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                ) : (
-                  <>
-                    <span>Iniciar Sesión</span>
-                    <ArrowRight className="w-5 h-5" />
-                  </>
-                )}
-              </button>
-            </form>
-
-            {/* Demo Credentials */}
-            <div className="mt-8 p-4 bg-gray-50 rounded-xl">
-              <h3 className="text-sm font-semibold text-gray-700 mb-2">🔐 Credenciales de Prueba</h3>
-              <div className="text-sm text-gray-600 space-y-1">
-                <p><strong>Email:</strong> admin@test.com</p>
-                <p><strong>Password:</strong> admin123</p>
-              </div>
-            </div>
-
-            {/* Footer */}
-            <div className="mt-8 text-center">
-              <p className="text-xs text-gray-500">
-                Al iniciar sesión, aceptas nuestros{' '}
-                <button className="text-indigo-600 hover:text-indigo-700">Términos de Servicio</button>
-                {' '}y{' '}
-                <button className="text-indigo-600 hover:text-indigo-700">Política de Privacidad</button>
-              </p>
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </>
   )
 }
