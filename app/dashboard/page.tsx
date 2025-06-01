@@ -1,3 +1,5 @@
+'use client'
+
 import React, { useState, useEffect } from 'react';
 import { MessageCircle, Upload, FileText, BarChart3, Settings, User, Search, Bell, Home, Sparkles, Brain, Zap, TrendingUp, FileBarChart, Users, Activity, Plus, ArrowRight, ChevronRight, Bot, Database, Cpu, Cloud } from 'lucide-react';
 
