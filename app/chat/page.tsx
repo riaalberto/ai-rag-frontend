@@ -52,7 +52,7 @@ export default function ChatPage() {
     setIsLoading(true)
 
     try {
-      const response = await fetch('https://ai-rag-agent-production.up.railway.app/api/chat', {
+      const response = await fetch('https://ai-rag-auth-service-production.up.railway.app/api/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -67,7 +67,7 @@ export default function ChatPage() {
       
       const botMessage = {
         id: (Date.now() + 1).toString(),
-        text: data.response || 'Lo siento, no pude procesar tu pregunta.',
+        text: data.response || data.answer || 'Lo siento, no pude procesar tu pregunta.',
         isUser: false,
         timestamp: new Date()
       }
