@@ -275,6 +275,7 @@ export default function ModernAnalyticsPage() {
           <div style={{ padding: '20px 0', borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>
             <Link href="/dashboard" className="nav-link">Dashboard</Link>
             <Link href="/chat" className="nav-link">Chat</Link>
+            <Link href="/analyzer" className="nav-link">📊 Excel Analyzer</Link>
             <Link href="/analytics" className="nav-link active">Analytics</Link>
             <Link href="/upload" className="nav-link">Upload</Link>
             <Link href="/documents" className="nav-link">Documents</Link>
