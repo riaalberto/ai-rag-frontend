@@ -7,6 +7,8 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   LineChart, Line, PieChart, Pie, Cell, AreaChart, Area, ScatterChart, Scatter
 } from 'recharts'
+// 🔧 NUEVO: Agregar import de SheetJS para leer Excel reales
+import * as XLSX from 'xlsx'
 
 interface ExcelData {
   [key: string]: any
@@ -30,6 +32,282 @@ interface ChartSuggestion {
   yAxis?: string
   category?: string
 }
+// 🔧 FUNCIÓN REEMPLAZADA: Leer archivo Excel REAL
+  const handleFileUpload = async (selectedFile: File) => {
+    if (!selectedFile) return
+    
+    setFile(selectedFile)
+    setIsAnalyzing(true)
+    setViewMode('analysis')
+    
+    try {
+      console.log('📊 Analizando archivo Excel REAL:', selectedFile.name, 'Tamaño:', selectedFile.size, 'bytes')
+      
+      // 🎯 LECTURA REAL DEL ARCHIVO EXCEL CON SHEETJS
+      const arrayBuffer = await selectedFile.arrayBuffer()
+      console.log('📄 Archivo leído en memoria, procesando...')
+      
+      // Leer el workbook
+      const workbook = XLSX.read(arrayBuffer, {
+        cellDates: true,    // Convertir fechas automáticamente
+        cellNF: false,      // No aplicar formato de número
+        cellText: false,    // No convertir todo a texto
+        raw: false          // Aplicar formato apropiado
+      })
+      
+      console.log('📋 Hojas disponibles:', workbook.SheetNames)
+      
+      // Usar la primera hoja
+      const sheetName = workbook.SheetNames[0]
+      const worksheet = workbook.Sheets[sheetName]
+      
+      // Convertir hoja a JSON
+      const realData = XLSX.utils.sheet_to_json(worksheet, {
+        header: 1,          // Usar números como headers inicialmente
+        defval: '',         // Valor por defecto para celdas vacías
+        raw: false          // Aplicar formato
+      }) as any[][]
+      
+      console.log('📊 Datos brutos extraídos:', realData.length, 'filas')
+      
+      if (realData.length === 0) {
+        throw new Error('El archivo Excel está vacío o no contiene datos')
+      }
+      
+      // Procesar datos: primera fila como headers, resto como datos
+      const headers = realData[0].map((header, index) => 
+        header && header.toString().trim() || `Columna_${index + 1}`
+      )
+      
+      const dataRows = realData.slice(1).filter(row => 
+        row.some(cell => cell !== null && cell !== undefined && cell !== '')
+      )
+      
+      console.log('📋 Headers detectados:', headers)
+      console.log('📊 Filas de datos válidas:', dataRows.length)
+      
+      if (dataRows.length === 0) {
+        throw new Error('No se encontraron datos válidos en el archivo Excel')
+      }
+      
+      // Convertir a formato objeto
+      const processedData: ExcelData[] = dataRows.map((row, index) => {
+        const rowObj: ExcelData = {}
+        headers.forEach((header, colIndex) => {
+          const cellValue = row[colIndex]
+          
+          // Procesar valor de celda
+          if (cellValue === null || cellValue === undefined || cellValue === '') {
+            rowObj[header] = null
+          } else if (typeof cellValue === 'string') {
+            // Limpiar strings
+            const cleanValue = cellValue.trim()
+            rowObj[header] = cleanValue === '' ? null : cleanValue
+          } else if (cellValue instanceof Date) {
+            // Formatear fechas
+            rowObj[header] = cellValue.toISOString().split('T')[0]
+          } else {
+            // Números y otros tipos
+            rowObj[header] = cellValue
+          }
+        })
+        return rowObj
+      })
+      
+      console.log('✅ Datos procesados exitosamente:', processedData.length, 'filas')
+      console.log('📋 Muestra de datos:', processedData.slice(0, 3))
+      
+      // Validar que tengamos datos útiles
+      if (processedData.length < 2) {
+        throw new Error('El archivo necesita al menos 2 filas de datos para análisis')
+      }
+      
+      setRawData(processedData)
+      setDataPreview(processedData.slice(0, 10)) // Solo primeras 10 filas para preview
+      
+      // Analizar columnas con lógica corregida
+      const columnAnalysis = analyzeColumns(processedData)
+      setColumns(columnAnalysis)
+      console.log('🔍 Análisis de columnas completado:', columnAnalysis)
+      
+      // Generar sugerencias automáticas
+      const chartSuggestions = generateChartSuggestions(columnAnalysis, processedData)
+      setSuggestions(chartSuggestions)
+      console.log('🤖 Sugerencias generadas:', chartSuggestions)
+      
+      setAnalysisComplete(true)
+      
+    } catch (error) {
+      console.error('❌ Error analizando archivo Excel:', error)
+      
+      // Mostrar error específico al usuario
+      let errorMessage = 'Error desconocido al procesar el archivo'
+      
+      if (error instanceof Error) {
+        if (error.message.includes('zip')) {
+          errorMessage = 'El archivo parece estar corrupto o no es un archivo Excel válido'
+        } else if (error.message.includes('vacío')) {
+          errorMessage = 'El archivo Excel está vacío o no contiene datos'
+        } else if (error.message.includes('datos válidos')) {
+          errorMessage = 'No se encontraron datos válidos en el archivo'
+        } else if (error.message.includes('2 filas')) {
+          errorMessage = 'El archivo necesita al menos 2 filas de datos para análisis'
+        } else {
+          errorMessage = error.message
+        }
+      }
+      
+      // Resetear estado en caso de error
+      setRawData([])
+      setColumns([])
+      setSuggestions([])
+      setDataPreview([])
+      setAnalysisComplete(false)
+      setViewMode('upload')
+      
+      // Mostrar error al usuario (puedes personalizar esto)
+      alert(`Error al procesar el archivo Excel:\n\n${errorMessage}\n\nVerifica que:\n- El archivo no esté corrupto\n- Contenga datos en la primera hoja\n- Tenga headers en la primera fila\n- Tenga al menos 2 filas de datos`)
+      
+    } finally {
+      setIsAnalyzing(false)
+    }
+  }
+// 🗑️ FUNCIÓN ELIMINADA: generateMockExcelData
+  // Esta función ya no se necesita porque ahora leemos archivos Excel reales
+  // ANTES había ~50 líneas de código de simulación que han sido eliminadas
+
+  // 🔧 FUNCIÓN MEJORADA: Analizar tipos de columnas con datos reales
+  const analyzeColumns = (data: ExcelData[]): ColumnAnalysis[] => {
+    if (data.length === 0) return []
+    
+    console.log('🔍 Iniciando análisis de columnas con', data.length, 'filas de datos reales')
+    
+    const sample = data.slice(0, Math.min(100, data.length)) // Analizar muestra para optimización
+    const columnNames = Object.keys(sample[0] || {})
+    
+    console.log('📋 Columnas encontradas:', columnNames)
+    
+    return columnNames.map(columnName => {
+      const values = sample
+        .map(row => row[columnName])
+        .filter(v => v !== null && v !== undefined && v !== '')
+      
+      const uniqueValues = new Set(values).size
+      const nullCount = sample.length - values.length
+      
+      console.log(`🔍 Analizando columna "${columnName}":`, {
+        totalValues: values.length,
+        uniqueValues,
+        nullCount,
+        sampleValues: values.slice(0, 3)
+      })
+      
+      // 🎯 DETECCIÓN MEJORADA DE TIPOS PARA DATOS REALES
+      let type: ColumnAnalysis['type'] = 'text'
+      let confidence = 0
+      let numericCount = 0
+      let dateCount = 0
+      let currencyCount = 0
+      let percentageCount = 0
+      
+      values.forEach(value => {
+        const strValue = String(value).trim()
+        
+        // Detectar moneda (símbolos $, €, ¥, etc. o números con formato de moneda)
+        if (/^[\$€¥£₹]?[\d,]+\.?\d*$/.test(strValue) || 
+            /^[\d,]+\.?\d*[\$€¥£₹]$/.test(strValue) ||
+            (typeof value === 'number' && columnName.toLowerCase().match(/(precio|costo|ingreso|ganancia|monto|valor)/))) {
+          currencyCount++
+        }
+        // Detectar porcentaje (símbolo % o valores entre 0-100 en columnas de porcentaje)
+        else if (/^\d+\.?\d*%$/.test(strValue) ||
+                (typeof value === 'number' && value >= 0 && value <= 100 && 
+                 columnName.toLowerCase().match(/(porcentaje|rentabilidad|%)/))) {
+          percentageCount++
+        }
+        // Detectar fecha (formatos comunes de fecha)
+        else if (value instanceof Date || 
+                strValue.match(/^\d{4}[-\/]\d{1,2}[-\/]\d{1,2}$/) ||
+                strValue.match(/^\d{1,2}[-\/]\d{1,2}[-\/]\d{4}$/) ||
+                (!isNaN(Date.parse(strValue)) && strValue.length > 6 && strValue.length < 12 && strValue.includes('/'))) {
+          dateCount++
+        }
+        // Detectar número puro (sin símbolos de moneda o porcentaje)
+        else if (typeof value === 'number' || 
+                (!isNaN(parseFloat(strValue)) && isFinite(parseFloat(strValue)) && 
+                 !strValue.includes('/') && !strValue.includes('-') && strValue.length < 10)) {
+          numericCount++
+        }
+      })
+      
+      const totalValues = values.length
+      
+      console.log(`📊 Conteos para "${columnName}":`, {
+        numericCount,
+        currencyCount,
+        percentageCount,
+        dateCount,
+        totalValues
+      })
+      
+      // Determinar tipo basado en mayoría (>60%)
+      if (currencyCount / totalValues > 0.6) {
+        type = 'currency'
+        confidence = currencyCount / totalValues
+      } else if (percentageCount / totalValues > 0.6) {
+        type = 'percentage'
+        confidence = percentageCount / totalValues
+      } else if (numericCount / totalValues > 0.6) {
+        type = 'number'
+        confidence = numericCount / totalValues
+      } else if (dateCount / totalValues > 0.6) {
+        type = 'date'
+        confidence = dateCount / totalValues
+      } else {
+        type = 'text'
+        confidence = 1 - Math.max(numericCount, dateCount, currencyCount, percentageCount) / totalValues
+      }
+      
+      // 🎯 DETECCIÓN POR NOMBRE DE COLUMNA MEJORADA (fallback)
+      if (confidence < 0.8) {
+        const columnLower = columnName.toLowerCase()
+        
+        // Patrones para moneda/dinero
+        if (columnLower.match(/(precio|ingreso|costo|ganancia|monto|valor|dinero|pago|factura|venta)/)) {
+          type = 'currency'
+          confidence = Math.max(confidence, 0.75)
+        } 
+        // Patrones para porcentaje
+        else if (columnLower.match(/(rentabilidad|porcentaje|%|tasa|ratio|proporcion)/)) {
+          type = 'percentage'
+          confidence = Math.max(confidence, 0.75)
+        } 
+        // Patrones para fecha
+        else if (columnLower.match(/(fecha|date|dia|mes|año|time|cuando)/)) {
+          type = 'date'
+          confidence = Math.max(confidence, 0.75)
+        } 
+        // Patrones para número
+        else if (columnLower.match(/(cantidad|numero|unidades|total|count|id|edad|años)/)) {
+          type = 'number'
+          confidence = Math.max(confidence, 0.75)
+        }
+      }
+      
+      const result = {
+        name: columnName,
+        type,
+        uniqueValues,
+        nullCount,
+        sample: values.slice(0, 5),
+        confidence: Math.round(confidence * 100) / 100
+      }
+      
+      console.log(`✅ Resultado para "${columnName}":`, result)
+      
+      return result
+    })
+  }
 export default function ExcelAnalyzer() {
   const router = useRouter()
   const [currentTime, setCurrentTime] = useState('')
@@ -59,172 +337,7 @@ export default function ExcelAnalyzer() {
     const interval = setInterval(updateTime, 1000)
     return () => clearInterval(interval)
   }, [])
-// Función para leer archivo Excel
-  const handleFileUpload = async (selectedFile: File) => {
-    if (!selectedFile) return
-    
-    setFile(selectedFile)
-    setIsAnalyzing(true)
-    setViewMode('analysis')
-    
-    try {
-      console.log('📊 Analizando archivo Excel:', selectedFile.name)
-      
-      // Simulación de lectura de Excel (aquí irían librerías como SheetJS)
-      // Por ahora simulamos datos para demostrar funcionalidad
-      const mockData = generateMockExcelData(selectedFile.name)
-      
-      setRawData(mockData)
-      setDataPreview(mockData.slice(0, 10)) // Solo primeras 10 filas para preview
-      
-      // Analizar columnas con lógica corregida
-      const columnAnalysis = analyzeColumns(mockData)
-      setColumns(columnAnalysis)
-      console.log('🔍 Análisis de columnas:', columnAnalysis)
-      
-      // Generar sugerencias automáticas
-      const chartSuggestions = generateChartSuggestions(columnAnalysis, mockData)
-      setSuggestions(chartSuggestions)
-      console.log('🤖 Sugerencias generadas:', chartSuggestions)
-      
-      setAnalysisComplete(true)
-      
-    } catch (error) {
-      console.error('❌ Error analizando archivo:', error)
-    } finally {
-      setIsAnalyzing(false)
-    }
-  }
-
-  // Generar datos mock basados en el nombre del archivo
-  const generateMockExcelData = (filename: string): ExcelData[] => {
-    const isLargeFile = filename.toLowerCase().includes('grande') || filename.toLowerCase().includes('large')
-    const rowCount = isLargeFile ? 10000 : 1000
-    
-    const data: ExcelData[] = []
-    const vendedores = ['Juan Pérez', 'María García', 'Carlos López', 'Ana Martínez', 'Pedro Sánchez']
-    const unidadesNegocio = ['Norte', 'Sur', 'Centro', 'Oriente', 'Occidente']
-    const clase1 = ['Premium', 'Standard', 'Basic']
-    const clase2 = ['A', 'B', 'C']
-    
-    for (let i = 0; i < rowCount; i++) {
-      const ingresos = Math.random() * 100000 + 10000
-      const costos = ingresos * (0.4 + Math.random() * 0.3)
-      const ganancia = ingresos - costos
-      const rentabilidad = (ganancia / ingresos) * 100
-      
-      data.push({
-        id: i + 1,
-        fecha: new Date(2024, Math.floor(Math.random() * 12), Math.floor(Math.random() * 28) + 1).toISOString().split('T')[0],
-        vendedor: vendedores[Math.floor(Math.random() * vendedores.length)],
-        unidad_negocio: unidadesNegocio[Math.floor(Math.random() * unidadesNegocio.length)],
-        clase1: clase1[Math.floor(Math.random() * clase1.length)],
-        clase2: clase2[Math.floor(Math.random() * clase2.length)],
-        ingresos: Math.round(ingresos),
-        costos: Math.round(costos),
-        ganancia: Math.round(ganancia),
-        rentabilidad: Math.round(rentabilidad * 100) / 100,
-        unidades_vendidas: Math.floor(Math.random() * 100) + 1,
-        precio_unitario: Math.round((ingresos / (Math.floor(Math.random() * 100) + 1)) * 100) / 100
-      })
-    }
-    
-    return data
-  }
-
-  // 🔧 FUNCIÓN CORREGIDA: Analizar tipos de columnas
-  const analyzeColumns = (data: ExcelData[]): ColumnAnalysis[] => {
-    if (data.length === 0) return []
-    
-    const sample = data.slice(0, 100) // Analizar muestra para optimización
-    const columnNames = Object.keys(sample[0])
-    
-    return columnNames.map(columnName => {
-      const values = sample.map(row => row[columnName]).filter(v => v !== null && v !== undefined && v !== '')
-      const uniqueValues = new Set(values).size
-      const nullCount = sample.length - values.length
-      
-      // 🎯 DETECCIÓN MEJORADA DE TIPOS
-      let type: ColumnAnalysis['type'] = 'text'
-      let confidence = 0
-      let numericCount = 0
-      let dateCount = 0
-      let currencyCount = 0
-      let percentageCount = 0
-      
-      values.forEach(value => {
-        const strValue = String(value).trim()
-        
-        // Detectar moneda (símbolos $, €, ¥, etc.)
-        if (/^[\$€¥£]?[\d,]+\.?\d*$/.test(strValue) || /^[\d,]+\.?\d*[\$€¥£]$/.test(strValue)) {
-          currencyCount++
-        }
-        // Detectar porcentaje
-        else if (/^\d+\.?\d*%$/.test(strValue)) {
-          percentageCount++
-        }
-        // Detectar fecha (formato específico y realista)
-        else if (strValue.includes('/') || strValue.includes('-')) {
-          const possibleDate = new Date(strValue)
-          if (!isNaN(possibleDate.getTime()) && strValue.length > 6 && strValue.length < 12) {
-            dateCount++
-          }
-        }
-        // Detectar número puro (sin símbolos de moneda o porcentaje)
-        else if (!isNaN(parseFloat(strValue)) && isFinite(parseFloat(strValue))) {
-          numericCount++
-        }
-      })
-      
-      const totalValues = values.length
-      
-      // Determinar tipo basado en mayoría (>60%)
-      if (currencyCount / totalValues > 0.6) {
-        type = 'currency'
-        confidence = currencyCount / totalValues
-      } else if (percentageCount / totalValues > 0.6) {
-        type = 'percentage'
-        confidence = percentageCount / totalValues
-      } else if (numericCount / totalValues > 0.6) {
-        type = 'number'
-        confidence = numericCount / totalValues
-      } else if (dateCount / totalValues > 0.6) {
-        type = 'date'
-        confidence = dateCount / totalValues
-      } else {
-        type = 'text'
-        confidence = 1 - Math.max(numericCount, dateCount, currencyCount, percentageCount) / totalValues
-      }
-      
-      // Detectar por nombre de columna como fallback
-      if (confidence < 0.8) {
-        const columnLower = columnName.toLowerCase()
-        if (columnLower.includes('precio') || columnLower.includes('ingreso') || columnLower.includes('costo') || columnLower.includes('ganancia')) {
-          type = 'currency'
-          confidence = Math.max(confidence, 0.7)
-        } else if (columnLower.includes('rentabilidad') || columnLower.includes('porcentaje')) {
-          type = 'percentage'
-          confidence = Math.max(confidence, 0.7)
-        } else if (columnLower.includes('fecha') || columnLower.includes('date')) {
-          type = 'date'
-          confidence = Math.max(confidence, 0.7)
-        } else if (columnLower.includes('cantidad') || columnLower.includes('numero') || columnLower.includes('unidades')) {
-          type = 'number'
-          confidence = Math.max(confidence, 0.7)
-        }
-      }
-      
-      return {
-        name: columnName,
-        type,
-        uniqueValues,
-        nullCount,
-        sample: values.slice(0, 5),
-        confidence: Math.round(confidence * 100) / 100
-      }
-    })
-  }
-// 🔧 FUNCIÓN MEJORADA: Generar sugerencias de gráficas
+// 🔧 FUNCIÓN MEJORADA: Generar sugerencias de gráficas (sin cambios)
   const generateChartSuggestions = (columns: ColumnAnalysis[], data: ExcelData[]): ChartSuggestion[] => {
     const suggestions: ChartSuggestion[] = []
     
@@ -677,7 +790,8 @@ return (
               </button>
             ))}
           </div>
-{/* Content based on view mode */}
+
+          {/* Content based on view mode */}
           {viewMode === 'upload' && (
             <div style={{ textAlign: 'center' }}>
               <div style={{
@@ -902,7 +1016,7 @@ return (
               </div>
             </div>
           )}
-{viewMode === 'analysis' && (
+          {viewMode === 'analysis' && (
             <div>
               {isAnalyzing ? (
                 <div style={{ textAlign: 'center', padding: '3rem' }}>
@@ -1545,7 +1659,8 @@ return (
                       </div>
                     )}
                   </div>
-{/* Data Preview */}
+
+                  {/* Data Preview */}
                   <div style={{
                     background: 'rgba(255, 255, 255, 0.1)',
                     borderRadius: '15px',
@@ -1579,7 +1694,7 @@ return (
                           margin: '0 0 1.5rem 0',
                           fontSize: '0.9rem'
                         }}>
-                          📋 Muestra representativa de tus datos para verificar que la detección de tipos sea correcta:
+                          📋 Muestra representativa de tus datos reales para verificar que la detección de tipos sea correcta:
                         </p>
 
                         <div style={{ 
@@ -1850,7 +1965,7 @@ return (
               )}
             </div>
           )}
-{viewMode === 'charts' && (
+          {viewMode === 'charts' && (
             <div>
               {processedData.length > 0 ? (
                 <div>
@@ -1868,7 +1983,7 @@ return (
                       margin: 0,
                       fontSize: '1rem'
                     }}>
-                      Visualizaciones interactivas basadas en tus datos. Haz hover para más detalles.
+                      Visualizaciones interactivas basadas en tus datos reales. Haz hover para más detalles.
                     </p>
                   </div>
 
@@ -2237,7 +2352,7 @@ return (
                         color: 'rgba(255, 255, 255, 0.7)',
                         fontSize: '0.8rem'
                       }}>
-                        Pasa el mouse sobre las gráficas para ver detalles adicionales y valores específicos.
+                        Pasa el mouse sobre las gráficas para ver detalles adicionales y valores específicos de tus datos reales.
                       </div>
                     </div>
                   </div>
@@ -2314,10 +2429,9 @@ return (
               )}
             </div>
           )}
-          </div>
+        </div>
       </div>
-
-      {/* Global Styles */}
+{/* Global Styles */}
       <style>{`
         @keyframes pulse {
           0% { opacity: 1; }
